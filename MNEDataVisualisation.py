@@ -6,6 +6,7 @@ from mne.datasets.eegbci import eegbci
 from mne.decoding import CSP
 from mne.io import read_raw_edf
 import numpy
+import data_loading
 import matplotlib.pyplot as plt
 
 #Set our log level to avoid excessive bullshit.
@@ -17,10 +18,10 @@ mne.set_log_level("WARNING")
 #raw = mne.io.read_raw_edf(file, preload=True)
 
 #For multiple:
-file = ["EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S001\\S001R04.edf",
-              "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S001\\S001R08.edf",
-              "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S001\\S001R12.edf"]
-raw = concatenate_raws([read_raw_edf(f, preload=True) for f in file])
+#raw = data_loading.get_single_mi(1, 2)
+
+#For All:
+raw = data_loading.get_all_mi_between(1, 110, 2, ["088", "092", "100"])
 
 #This file is for the imagined opening and closing of the left and right fists.
 
@@ -31,7 +32,7 @@ raw.set_montage("standard_1020", match_case=False)
 raw.set_eeg_reference("average", projection=True)
 
 #Now, we can simply plot the data.
-order = numpy.arange(raw.info['nchan'])
+#order = numpy.arange(raw.info['nchan'])
 #raw.plot(n_channels=10, order=order, block=True)
 
 #Let's take a look at the power spectral density
@@ -74,6 +75,10 @@ epochs = mne.Epochs(raw_f, events, event_id=event_dict, tmin=-0.2, tmax=0.5,
 evoked_t1 = epochs['T1'].average()
 evoked_t2 = epochs['T2'].average()
 
+#Get rid of unnecessary data
+del raw_f
+del epochs
+
 evoked_t1.plot_topomap()
 evoked_t1.plot(spatial_colors=True, gfp=True)
 evoked_t2.plot_topomap()
@@ -93,9 +98,21 @@ epochs = mne.Epochs(raw_f, events, event_id=event_dict, tmin=-0.2, tmax=0.5,
 evoked_t1_csd = epochs['T1'].average()
 evoked_t2_csd = epochs['T2'].average()
 
+#Get rid of unnecessary data
+del raw_csd
+del epochs
+
 evoked_t1_csd.plot(picks=['C3', 'Cz', 'C4'], spatial_colors=True, gfp=True)
 evoked_t2_csd.plot(picks=['C3', 'Cz', 'C4'], spatial_colors=True, gfp=True)
 
-#Let's grab a grand average of these datasets to take a look for anything interesting.
+#We can also check the grand average if we want. Not really needed, but eh.
 #grand_average = mne.grand_average([evoked_t1_csd, evoked_t2_csd])
 #grand_average.plot(picks=['C3', 'Cz', 'C4'], spatial_colors=True)
+
+#So, from the plots of C3, Cz and C4, we can see some clear change in behaviour
+#At the 0.5 second point and onwards, with T1 causing a spike in activity, and T2
+#causing a slight lull. This may, or may not, be enough to properly classify.
+#Either way, we need to reduce the feature space if we want a good result.
+#That's where Principal Component Analysis comes in.
+
+

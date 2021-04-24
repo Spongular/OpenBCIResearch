@@ -18,11 +18,11 @@ from sklearn.pipeline import Pipeline
 
 mne.set_log_level('WARNING')
 tmin, tmax = -1., 4. #This determines the boundaries for the epochs.
-event_dict = dict(hands=2, feet=3) #Define our events.
+#event_dict = dict(hands=2, feet=3) #Define our events.
 
 #Select the hands & feet tests.
 files = []
-for a in range(1, 80):
+for a in range(1, 2):
     num = "{0:03}".format(a)
     files += ["EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R06.edf",
               "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R10.edf",
@@ -54,8 +54,11 @@ picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False, exclude
 
 #Now we can finally get our epochs. Training will be done between 1s and 2s in the epochs.
 epochs = Epochs(raw, events, event_id, tmin, tmax, proj=True, picks=picks, baseline=None, preload=True)
-epochs_train = epochs.copy().crop(tmin = 1., tmax = 2.)
+epochs_train = epochs.copy()#.crop(tmin = 1., tmax = 2.)
 labels = epochs.events[:,-1] -2
+
+print(epochs.get_data().shape)
+print(labels.shape)
 
 # Now for a monte-carlo cross-validation generator
 scores = []
@@ -72,7 +75,7 @@ csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
 #Use scikit-learn pipeline with cross_val_score function
 clf = Pipeline([('CSP', csp), ('LDA', lda)])
 clf2 = Pipeline([('CSP', csp), ('SVM', svm)])
-scores = cross_val_score(clf, epochs_data_train, labels, cv=cv, n_jobs=1)
+scores = cross_val_score(clf, epochs_data, labels, cv=cv, n_jobs=1)
 scores2 = cross_val_score(clf2, epochs_data_train, labels, cv=cv, n_jobs=1)
 
 #And print them
