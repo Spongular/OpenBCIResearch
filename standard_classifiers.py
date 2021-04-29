@@ -1,5 +1,5 @@
 # This file contains the implementation for all of the classification methods.
-import mne
+import gen_tools
 import numpy as np
 import matplotlib.pyplot as plt
 from mne import pick_types, Epochs, events_from_annotations, concatenate_raws
@@ -12,28 +12,14 @@ from sklearn import svm
 from sklearn.feature_selection import f_classif, mutual_info_classif, f_regression, mutual_info_regression
 from sklearn.feature_selection import SelectKBest
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import ShuffleSplit, cross_val_score, train_test_split, GridSearchCV, HalvingGridSearchCV, \
-    RandomizedSearchCV, HalvingRandomSearchCV
+from sklearn.model_selection import ShuffleSplit, cross_val_score, train_test_split, GridSearchCV
+#from sklearn.model_selection import HalvingGridSearchCV, RandomizedSearchCV, HalvingRandomSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA, FastICA
 from sklearn.preprocessing import StandardScaler
 from time import time
 
 # 0 - Internal Methods
-
-def __extract_epochs(raw, tmin, tmax, pick_list=[]):
-    print("Extracting epochs from raw...")
-    # First, grab the events.
-    events, event_id = events_from_annotations(raw, event_id=dict(T1=2, T2=3))
-    # We pick our channels by type and name and grab epochs.
-    if len(pick_list) > 0:
-        picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False, exclude='bads', selection=pick_list)
-    else:
-        picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False, exclude='bads')
-    epochs = Epochs(raw, events, event_id, tmin, tmax, proj=True, picks=picks, baseline=None, preload=True)
-    labels = epochs.events[:, -1] - 2
-    data = epochs.get_data()
-    return data, labels, epochs
 
 def __perform_gridsearch(classifier, parameters, data, labels, n_jobs, verbose=0, cross_val=3):
     # Here, we make use of the CVGridsearch method to check the
@@ -119,7 +105,7 @@ def __perform_halving_randomsearch(classifier, parameters, data, labels, n_jobs,
 def csp_lda(raw, tmin, tmax, pick_list=[], plot_csp=False, n_logspace=50, n_jobs=1, max_csp_components=20):
 
     #Grab the data, labels and epochs
-    data, labels, epochs = __extract_epochs(raw, tmin=tmin, tmax=tmax, pick_list=pick_list)
+    data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=pick_list)
 
     # Assemble classifiers
     lda = LinearDiscriminantAnalysis()
@@ -174,7 +160,7 @@ def csp_svm(raw, tmin, tmax, pick_list=[], plot_csp=False, n_logspace=50, n_jobs
         n_logspace = 50
 
     # Grab the data, labels and epochs
-    data, labels, epochs = __extract_epochs(raw, tmin=tmin, tmax=tmax, pick_list=pick_list)
+    data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=pick_list)
 
     # Assemble classifiers
     svc = svm.SVC(kernel='linear', C=1, random_state=42)
@@ -244,7 +230,7 @@ def csp_knn(raw, tmin, tmax, pick_list=[], plot_csp=False, max_n_neighbors=4, n_
     print("Parameters checked.")
 
     # Grab the data, labels and epochs
-    data, labels, epochs = __extract_epochs(raw, tmin=tmin, tmax=tmax, pick_list=pick_list)
+    data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=pick_list)
 
     print("Assembling classification pipeline and parameter set...")
     # Assemble classifiers
@@ -310,7 +296,7 @@ def pca_lda(raw, tmin, tmax, pick_list=[], n_jobs=1, pca_n_components=32):
     print("Parameters checked.")
 
     # Grab the data, labels and epochs
-    data, labels, epochs = __extract_epochs(raw, tmin=tmin, tmax=tmax, pick_list=pick_list)
+    data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=pick_list)
 
     print("Assembling classification pipeline and parameter set...")
     # Assemble classifiers
@@ -350,7 +336,7 @@ def pca_svm(raw, tmin, tmax, pick_list=[], n_logspace=10, n_jobs=1, pca_n_compon
     print("Parameters checked.")
 
     # Grab the data, labels and epochs
-    data, labels, epochs = __extract_epochs(raw, tmin=tmin, tmax=tmax, pick_list=pick_list)
+    data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=pick_list)
 
     print("Assembling classification pipeline and parameter set...")
     # Assemble classifiers
@@ -391,7 +377,7 @@ def pca_knn(raw, tmin, tmax, pick_list=[], max_n_neighbors=4, n_jobs=1, pca_n_co
     print("Parameters checked.")
 
     # Grab the data, labels and epochs
-    data, labels, epochs = __extract_epochs(raw, tmin=tmin, tmax=tmax, pick_list=pick_list)
+    data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=pick_list)
 
     print("Assembling classification pipeline and parameter set...")
     # Assemble classifiers
