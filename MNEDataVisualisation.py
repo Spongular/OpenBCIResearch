@@ -25,7 +25,7 @@ mne.set_log_level("WARNING")
 #raw = data_loading.get_single_mi(1, 2)
 
 #For All:
-raw = data_loading.get_all_mi_between(1, 40, 2, ["088", "092", "100"])
+raw = data_loading.get_all_mi_between(1, 2, 2, ["088", "092", "100"])
 
 #This file is for the imagined opening and closing of the left and right fists.
 
@@ -40,7 +40,7 @@ raw.set_eeg_reference("average", projection=True)
 #raw.plot(n_channels=10, order=order, block=True)
 
 #Let's take a look at the power spectral density
-#raw.plot_psd()
+raw.plot_psd()
 
 #It's not all that useful in that form though, so let's epoch it.
 events, event_dict = mne.events_from_annotations(raw)
@@ -57,16 +57,16 @@ print(event_dict)
 del event_dict['T0']
 
 #Now, we can create and plot some Epochs
-epochs = mne.Epochs(raw, events, event_id=event_dict, tmin=-1, tmax=4,
-                    preload=True)
+#epochs = mne.Epochs(raw, events, event_id=event_dict, tmin=-1, tmax=4,
+                    #preload=True)
 
-print(epochs.event_id)
+#print(epochs.event_id)
 #epochs['T2'].plot()
 #epochs['T1'].plot(block=True)
 
 #We can now average them to see the evoked response.
-evoked_t1 = epochs['T1'].average()
-evoked_t2 = epochs['T2'].average()
+#evoked_t1 = epochs['T1'].average()
+#evoked_t2 = epochs['T2'].average()
 
 # evoked_t1.plot()
 # evoked_t2.plot()
@@ -75,32 +75,32 @@ evoked_t2 = epochs['T2'].average()
 #When processing the data for classification, we make use of bandpass filters
 #to ensure that the data stays within the expected frequencies. So, let's do that.
 #In this case, we stick to the 'Mu' band of 8-12hz.
-raw_f = raw.filter(6., 30., fir_design='firwin')
-epochs = mne.Epochs(raw_f, events, event_id=event_dict, tmin=-0.2, tmax=0.5,
-                    preload=True)
+raw_f = raw.filter(1., 6., fir_design='firwin')
+epochs = mne.Epochs(raw_f, events, event_id=event_dict, tmin=-1, tmax=4,
+                    preload=True, picks=['C3', 'Cz', 'C4'])
 evoked_t1 = epochs['T1'].average()
 evoked_t2 = epochs['T2'].average()
 
-epochs.plot_psd(fmin=6., fmax=30., )
+epochs.plot_psd(fmin=1., fmax=6., )
 epochs.plot_psd_topomap(normalize=True)
 
 #epochs.plot(block=True)
 
-freqs = np.logspace(*np.log10([6, 30]), num=10)
+freqs = np.logspace(*np.log10([1, 6]), num=6)
 n_cycles = freqs / 3.  # different number of cycle per frequency
 power_t1= tfr_morlet(evoked_t1, freqs=freqs, n_cycles=n_cycles, use_fft=True,
                         return_itc=False, decim=3, n_jobs=1)
 power_t2= tfr_morlet(evoked_t2, freqs=freqs, n_cycles=n_cycles, use_fft=True,
                         return_itc=False, decim=3, n_jobs=1)
-power_epochs = tfr_morlet(epochs, freqs=freqs, n_cycles=n_cycles, use_fft=True, decim=3,
-                          n_jobs=1, average=False, return_itc=False)
+#power_epochs = tfr_morlet(epochs, freqs=freqs, n_cycles=n_cycles, use_fft=True, decim=3,
+                          #n_jobs=1, average=False, return_itc=False)
 
-power_t1.plot_joint(baseline=(-0.5, 0), mode='mean', tmin=-0.2, tmax=0.5)
-power_t2.plot_joint(baseline=(-0.5, 0), mode='mean', tmin=-0.2, tmax=0.5)
-power_epochs.plot()
+power_t1.plot_joint(baseline=(-1, 0), mode='mean', tmin=-1, tmax=4)
+power_t2.plot_joint(baseline=(-1, 0), mode='mean', tmin=-1, tmax=4)
+#power_epochs.plot()
 
 print(power_t1.data.shape)
-print(power_epochs.data.shape)
+#print(power_epochs.data.shape)
 
 #evoked_t1.plot_topomap()
 evoked_t1.plot(spatial_colors=True, gfp=True)
