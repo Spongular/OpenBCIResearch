@@ -13,11 +13,16 @@ import numpy as np
 from keras.utils import to_categorical
 from keras import models
 from mne.datasets.eegbci import eegbci
+from keras import backend
 
+#Clear the last session just in case.
+backend.clear_session()
+
+#Set the log level to warning to avoid flooding the output window.
 mne.set_log_level('WARNING')
 
 #load our data.
-raw = data_loading.get_all_mi_between(1, 81, 2, ["088", "092", "100"])
+raw = data_loading.get_all_mi_between(1, 21, 2, ["088", "092", "100"])
 raw = gen_tools.preprocess_highpass(raw, min=4., fir_design='firwin')
 
 
@@ -31,25 +36,34 @@ raw = gen_tools.preprocess_highpass(raw, min=4., fir_design='firwin')
 #standard_classifiers.pca_knn(raw, -1., 4., ["C3", "Cz", "C4"], max_n_neighbors=10, n_jobs=2, pca_n_components=32)
 
 #Get Epochs
+#data, labels, epochs = gen_tools.epoch_data(raw, tmin=0, tmax=4, pick_list=['C3', 'Cz', 'C4'], plot_bads=True, eeg_reject_uV=600, scale=1000)
 data, labels, epochs = gen_tools.epoch_data(raw, tmin=0, tmax=4, pick_list=[], plot_bads=True, eeg_reject_uV=600, scale=1000)
+print("T1: %f" % (len(epochs['T1'])))
+print("T1: %f" % (len(epochs['T2'])))
 #del data, labels #We don't need these.
 
-#Generate Wavelets from Epochs.
-#X, Y = gen_tools.wavelet_transform_morlet(epochs, event_names=epochs.event_id,
-                                          #f_low=6., f_high=30., )
-#data = np.moveaxis(data, 1, 2)
+# #Generate Wavelets from Epochs.
+#data, labels = gen_tools.wavelet_transform_general(epochs, event_names=epochs.event_id,
+#                                           f_low=4., f_high=50., f_num=10, shuffle=True)
+#
+#data = np.moveaxis(data, 2, 3)
+#data = gen_tools.normalise(data)
+# data = data*1000
 data = np.expand_dims(data, 3)
 #Reshape X for FF network
 #X = gen_tools.reshape_4to3(X)
 
 #Form the Neural Network.
-#nn, opt = keras_classifiers.feedforward_nn(X.shape, n_classes=2, model_shape=[16, 8, 4, 8, 16], d_rate=0.5, b_norm=False)
-#nn, opt = keras_classifiers.convolutional_nn(data.shape, n_classes=2)
+#model, opt = keras_classifiers.feedforward_nn(data.shape, n_classes=2, model_shape=[1000, 200, 20], d_rate=0.8, b_norm=False)
+#model, opt = keras_classifiers.convolutional_nn(data.shape, cnn_shape=[25, 50, 64],
+#                                                dense_shape=[], n_classes=2, d_rate=0.50, filt_size=32)
 #nn = keras_classifiers.EEGNet(2, samples=data.shape[2])
 
-model = keras_classifiers.EEGNet(nb_classes=2, Chans=data.shape[1], Samples=data.shape[2],
-               dropoutRate=0.5, kernLength=32, F1=8, D=2, F2=16,
-               dropoutType='Dropout')
+#model = keras_classifiers.EEGNet(nb_classes=2, Chans=data.shape[1], Samples=data.shape[2], ThirdAxis=data.shape[3],
+#               dropoutRate=0.5, kernLength=32, F1=8, D=2, F2=16,
+#               dropoutType='Dropout')
+
+model = keras_classifiers.DeepConvNet(2, Chans=data.shape[1], Samples=data.shape[2])
 
 checkpointer = ModelCheckpoint(filepath='/tmp/checkpoint.h5', verbose=1,
                                save_best_only=True)
@@ -68,7 +82,7 @@ y_test = to_categorical(y_test, 2)
 
 class_weights = {0:1, 1:1}
 
-fittedModel = model.fit(X_train, y_train, batch_size = 16, epochs = 300,
+fittedModel = model.fit(X_train, y_train, batch_size = 5, epochs = 300,
                         verbose = 2, validation_data=(X_val, y_val),
                         class_weight=class_weights, callbacks=[checkpointer])
 
@@ -101,3 +115,6 @@ print("Classification accuracy: %f " % (acc))
 # 	KNN__weights: 'uniform'
 #
 # Process finished with exit code 0
+
+#Clear again.
+backend.clear_session()

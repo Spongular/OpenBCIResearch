@@ -16,18 +16,8 @@ from mne.datasets.eegbci import eegbci
 mne.set_log_level('WARNING')
 
 #load our data.
-raw = data_loading.get_all_mi_between(1, 81, 2, ["088", "092", "100"])
+raw = data_loading.get_all_mi_between(1, 110, 2, ["088", "092", "100"])
 raw = gen_tools.preprocess_highpass(raw, min=4., fir_design='firwin')
-
-
-#classify it.
-#standard_classifiers.csp_lda(raw, -1., 4.)
-#standard_classifiers.csp_svm(raw, -1., 4.)
-#standard_classifiers.csp_lda(raw, -1., 4., ["C3", "Cz", "C4"])
-
-#standard_classifiers.pca_lda(raw, -1., 4., ["C3", "Cz", "C4"], n_jobs=2, pca_n_components=32)
-#standard_classifiers.pca_svm(raw, -1., 4., ["C3", "Cz", "C4"], n_logspace=2, n_jobs=2, pca_n_components=32)
-#standard_classifiers.pca_knn(raw, -1., 4., ["C3", "Cz", "C4"], max_n_neighbors=10, n_jobs=2, pca_n_components=32)
 
 #Get Epochs
 #Apparently, scaling the data by 1000 helps classification.
@@ -75,9 +65,32 @@ preds       = probs.argmax(axis = -1)
 acc         = np.mean(preds == y_test.argmax(axis=-1))
 print("Classification accuracy: %f " % (acc))
 
-#First run gave:
+########################################################################################################################
+
+#First run (Subjects 1-80, 0-4 second epochs, 4Hz highpass,
+# left/right hand imagery) gave:
 
 # Epoch 00300: val_loss did not improve from 0.39680
 # Classification accuracy: 0.793160
+#
+# Process finished with exit code 0
+
+########################################################################################################################
+
+#Second run (Subjects 1-80, 0-4 second epochs, 4Hz highpass,
+# left/right hand imagery, limited to [C3, Cz, C4] channels) gave:
+
+# Epoch 00300: val_loss did not improve from 0.61354
+# Classification accuracy: 0.639665
+#
+# Process finished with exit code 0
+
+########################################################################################################################
+
+#Third run (Subjects 1-109, 0-4 second epochs, 4Hz highpass,
+# left/right hand imagery) gave:
+
+# Epoch 00300: val_loss did not improve from 0.39009
+# Classification accuracy: 0.797724
 #
 # Process finished with exit code 0

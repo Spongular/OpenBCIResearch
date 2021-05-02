@@ -6,6 +6,7 @@ from mne.channels import make_standard_montage
 from mne.datasets.eegbci import eegbci
 from mne.decoding import CSP
 from mne.io import read_raw_edf
+
 import numpy as np
 from mne.time_frequency import psd_welch, psd_multitaper, tfr_morlet
 
