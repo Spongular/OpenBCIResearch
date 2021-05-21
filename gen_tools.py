@@ -50,27 +50,44 @@ def preprocess_highpass(raw, min=1., fir_design='firwin'):
     return raw
 
 #Epochs the raw data and returns what we want.
-def epoch_data(raw, tmin, tmax, pick_list=[], plot_bads=False, eeg_reject_uV=250, scale=None):
+def epoch_data(raw, tmin, tmax, pick_list=[], plot_bads=False, eeg_reject_uV=None, scale=None):
     print("Extracting epochs from raw...")
     # First, grab the events.
     events, event_id = events_from_annotations(raw, event_id=dict(T1=2, T2=3))
+
     # We pick our channels by type and name and grab epochs.
     if len(pick_list) > 0:
         picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False, exclude='bads',
                            selection=pick_list)
     else:
         picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False, exclude='bads')
-    epochs = Epochs(raw, events, event_id, tmin, tmax, proj=True, picks=picks,
+
+    #Now, if we have no reject, we perform it normally, otherwise we drop epochs based on the threshold.
+    if eeg_reject_uV is None:
+        epochs = Epochs(raw, events, event_id, tmin, tmax, proj=True, picks=picks,
+                        baseline=None, preload=True)
+    else:
+        epochs = Epochs(raw, events, event_id, tmin, tmax, proj=True, picks=picks,
                     baseline=None, preload=True, reject=dict(eeg=eeg_reject_uV * 1e-6))
+
     epochs.drop_bad()
     print(epochs.drop_log)
+
+    #Plot our bads.
     if plot_bads:
         epochs.plot_drop_log()
+
+    #Grab our labels.
+    print(epochs.event_id)
     labels = epochs.events[:, -1] - 2
+
+    #We can scale the data here by a given value. Some NN implementations benefit from scaling the data
+    #updwards by a few orders of magnitude, i.e. scale=1000.
     if scale is None:
         data = epochs.get_data()
     else:
         data = epochs.get_data() * scale
+
     return data, labels, epochs
 
 #Performs a Fast Fourier Transform on each epoch.
@@ -127,12 +144,12 @@ def wavelet_transform_general(epochs, event_names=[], f_low=1., f_high=40., f_nu
             print('Creating Multitaper Time Frequency Representation of ' + event)
             tfr_temp = tfr_multitaper(epochs[event], freqs=frequencies, n_cycles=wave_cycles,
                                   return_itc=False, picks=picks, average=False,
-                                  decim=wavelet_decim, output='power')
+                                  decim=wavelet_decim)
         else:
             print('Creating Stockwell Time Frequency Representation of ' + event)
             tfr_temp = tfr_stockwell(epochs[event], freqs=frequencies, n_cycles=wave_cycles,
                                   return_itc=False, picks=picks, average=False,
-                                  decim=wavelet_decim, output='power')
+                                  decim=wavelet_decim)
 
         #Most instances of TFR involve applying a baseline based on the first 0.5-1 second
         #of the epoch. Nothing I've found can explain why.

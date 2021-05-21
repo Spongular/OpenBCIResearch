@@ -59,9 +59,9 @@ data = np.expand_dims(data, 3)
 #                                                dense_shape=[], n_classes=2, d_rate=0.50, filt_size=32)
 #nn = keras_classifiers.EEGNet(2, samples=data.shape[2])
 
-#model = keras_classifiers.EEGNet(nb_classes=2, Chans=data.shape[1], Samples=data.shape[2], ThirdAxis=data.shape[3],
-#               dropoutRate=0.5, kernLength=32, F1=8, D=2, F2=16,
-#               dropoutType='Dropout')
+model = keras_classifiers.EEGNet(nb_classes=2, Chans=data.shape[1], Samples=data.shape[2], ThirdAxis=data.shape[3],
+               dropoutRate=0.5, kernLength=32, F1=8, D=2, F2=16,
+               dropoutType='Dropout')
 
 model = keras_classifiers.DeepConvNet(2, Chans=data.shape[1], Samples=data.shape[2])
 
