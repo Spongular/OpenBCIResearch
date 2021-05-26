@@ -15,6 +15,8 @@ from keras import models
 from mne.datasets.eegbci import eegbci
 from keras import backend
 
+model, opt = keras_classifiers.convEEGNet(input_shape=(900, 481, 64, 1), n_classes=2, d_rate=0.5)
+
 #Clear the last session just in case.
 backend.clear_session()
 
@@ -22,7 +24,7 @@ backend.clear_session()
 mne.set_log_level('WARNING')
 
 #load our data.
-raw = data_loading.get_all_mi_between(1, 21, 2, ["088", "092", "100"])
+raw = data_loading.get_all_mi_between(1, 81, 2, ["088", "092", "100"])
 raw = gen_tools.preprocess_highpass(raw, min=4., fir_design='firwin')
 
 
@@ -37,7 +39,7 @@ raw = gen_tools.preprocess_highpass(raw, min=4., fir_design='firwin')
 
 #Get Epochs
 #data, labels, epochs = gen_tools.epoch_data(raw, tmin=0, tmax=4, pick_list=['C3', 'Cz', 'C4'], plot_bads=True, eeg_reject_uV=600, scale=1000)
-data, labels, epochs = gen_tools.epoch_data(raw, tmin=0, tmax=4, pick_list=[], plot_bads=True, eeg_reject_uV=600, scale=1000)
+data, labels, epochs = gen_tools.epoch_data(raw, tmin=0, tmax=4, pick_list=[], plot_bads=False, eeg_reject_uV=None, scale=1000)
 print("T1: %f" % (len(epochs['T1'])))
 print("T1: %f" % (len(epochs['T2'])))
 #del data, labels #We don't need these.
@@ -63,7 +65,7 @@ model = keras_classifiers.EEGNet(nb_classes=2, Chans=data.shape[1], Samples=data
                dropoutRate=0.5, kernLength=32, F1=8, D=2, F2=16,
                dropoutType='Dropout')
 
-model = keras_classifiers.DeepConvNet(2, Chans=data.shape[1], Samples=data.shape[2])
+#model = keras_classifiers.DeepConvNet(2, Chans=data.shape[1], Samples=data.shape[2])
 
 checkpointer = ModelCheckpoint(filepath='/tmp/checkpoint.h5', verbose=1,
                                save_best_only=True)
@@ -82,7 +84,7 @@ y_test = to_categorical(y_test, 2)
 
 class_weights = {0:1, 1:1}
 
-fittedModel = model.fit(X_train, y_train, batch_size = 5, epochs = 300,
+fittedModel = model.fit(X_train, y_train, batch_size = 16, epochs = 300,
                         verbose = 2, validation_data=(X_val, y_val),
                         class_weight=class_weights, callbacks=[checkpointer])
 

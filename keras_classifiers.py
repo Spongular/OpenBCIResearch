@@ -1,6 +1,7 @@
 #This contains the classification methods that can be considered 'deep neural networks' or 'deep learning'.
 #Primarily involves the use of Keras/Theano to generate classifiers.
 #Content may be based on/influenced by:
+import sys
 
 import tensorflow
 from keras.callbacks import TensorBoard
@@ -8,7 +9,7 @@ import numpy as np
 from keras.models import Sequential, clone_model, Model
 from keras.layers import Dense, Dropout, Input, Activation, SpatialDropout2D, DepthwiseConv2D, AveragePooling2D
 from keras.layers import Flatten, Conv2D, MaxPooling2D, LSTM, SeparableConv2D
-from keras.layers import BatchNormalization, Conv3D, MaxPooling3D
+from keras.layers import BatchNormalization, Conv3D, MaxPooling3D, Permute
 from keras.utils import to_categorical
 from keras.optimizers import Adam
 from keras.constraints import max_norm
@@ -35,15 +36,15 @@ def feedforward_nn(data_shape, n_classes=2, model_shape=[64, 32, 16, 8], d_rate=
     #Finally, add one last Dense layer with nodes equal to our class output.
     model.add(Dense(n_classes, activation='softmax'))
     # Now we compile and return the model.
-    opt = Adam(lr=0.001, beta_1=0.9, beta_2=0.999,
+    opt = Adam(lr=0.0001, beta_1=0.9, beta_2=0.999,
                epsilon=None, decay=0.0, amsgrad=False)
     model.compile(optimizer=opt, loss='categorical_crossentropy',
                   metrics='accuracy')
     model.summary()
     return model, opt
 
-def convolutional_nn(data_shape, cnn_shape=[50, 75, 120], dense_shape=[], n_classes=2,
-                     filt_size=3, pool_size=2, d_rate=0.25, b_norm=True):
+def convolutional_nn(data_shape, cnn_shape=[50, 75, 120], n_classes=2,
+                     pool_size=2, d_rate=0.25, b_norm=True, learn_r=0.001):
     shape = data_shape[1:]
     if len(cnn_shape) < 2:
         print('Warning: Need at least two layers for CNN')
@@ -52,6 +53,7 @@ def convolutional_nn(data_shape, cnn_shape=[50, 75, 120], dense_shape=[], n_clas
                      input_shape=shape, padding='same'))
     model.add(Activation('relu'))
     model.add(AveragePooling2D(pool_size=pool_size, strides=(1, 3), padding='same'))
+    model.add(Dropout(d_rate))
 
     #Add Convolutional Layers
     if len(cnn_shape) > 2:
@@ -63,32 +65,116 @@ def convolutional_nn(data_shape, cnn_shape=[50, 75, 120], dense_shape=[], n_clas
             model.add(AveragePooling2D(pool_size=pool_size, strides=(1, 3), padding='same'))
             model.add(Dropout(d_rate))
 
+    # Final Layers
     model.add(Flatten())
-    Conv2D(25, (1, 5),
-           input_shape=(1, 1, 1),
-           kernel_constraint=max_norm(2., axis=(0, 1, 2)))
-
-    #Add dense layers
-    for size in dense_shape:
-        model.add(Dense(size))
-        model.add(Activation('elu'))
-        model.add(Dropout(d_rate))
-
-    #Final Layers
     model.add(Dense(n_classes))
     model.add(Activation('softmax'))
 
-    opt = Adam(lr=0.001, beta_1=0.9, beta_2=0.999,
+    opt = Adam(lr=learn_r, beta_1=0.9, beta_2=0.999,
                epsilon=None, decay=0.0, amsgrad=False)
-    #model.compile(optimizer=opt, loss='categorical_crossentropy',
-                  #metrics='accuracy')
     model.summary()
     return model, opt
 
 def lstm_nn(data_shape, model_shape=[16, 8, 4], n_classes=2):
+
     return
 
-def perform_crossval(X, Y, model, n_splits, epochs, batch_size, binary=True, n_classes=2, opt=Adam()):
+#This is my own construction of EEGNet from the paper:
+#An Accurate EEGNet-based Motor-Imagery Brain–Computer Interface for Low-Power Edge Computing
+#First_tf_size is the Nf value form the paper, and pooling_length is the Np value.
+#Expects data in shape (trial, samples, channels, 1), so use gen_tools.reshape_3to4()
+#This link is useful to understand how they properly perform 1d depthwise:
+#https://datascience.stackexchange.com/questions/93569/performing-1d-depthwise-conv-using-keras-2d-depthwise-conv
+def convEEGNet(input_shape, chan, n_classes=2, n_filt = [8, 16, 16],
+               first_tf_size=128, pooling_length=8, l_rate=0.01,
+               d_rate=0.25):
+    #Initialising.
+    input_shape = input_shape[1:]
+    model = Sequential()
+
+    #First Layer.
+    #This is the temporal convolution.
+    model.add(Conv2D(filters=n_filt[0], kernel_size=[1, first_tf_size],
+                     strides=(1, 1), padding='same', input_shape=input_shape
+                     , use_bias=False))
+    model.add(BatchNormalization(name="bnorm1")) #Take a look at the axis if this doesn't work.
+
+    #Second Layer.
+    #This is the depthwise convolution. We need to reorder the input to perform 1d depthwise.
+    model.add(DepthwiseConv2D(depth_multiplier=2, kernel_size=[chan, 1],
+                              padding='valid', use_bias=False, depthwise_constraint=max_norm(1.)))
+    model.add(BatchNormalization())
+    model.add(Activation('elu'))
+    model.add(AveragePooling2D(pool_size=(1, pooling_length),
+                               padding='valid'))
+    model.add(Dropout(d_rate))
+
+    #Third Layer.
+    #This is the separable convolution.
+    model.add(SeparableConv2D(filters=n_filt[2], kernel_size=(1, 16), strides=(1, 1),
+                              padding='same', use_bias=False))
+    model.add(BatchNormalization())
+    model.add(Activation('elu'))
+    model.add(AveragePooling2D(pool_size=(1, pooling_length), padding='valid'))
+    model.add(Dropout(d_rate))
+
+    #Fourth Layer.
+    #This is the fully connected layer, where we flatten the data and
+    #use a dense layer to condense our results to the classes.
+    model.add(Flatten())
+    model.add(Dense(n_classes, kernel_constraint=max_norm(0.25)))
+    model.add(Activation('softmax'))
+
+    opt = Adam(lr=l_rate)
+    model.summary()
+    return model, opt
+
+def test(nb_classes, Chans=64, Samples=128, ThirdAxis=1,
+           dropoutRate=0.5, kernLength=64, F1=8,
+           D=2, F2=16, norm_rate=0.25, l_rate=0.001):
+
+    model = Sequential()
+
+    ##################################################################
+    model.add(Conv2D(F1, (1, kernLength), padding='same',
+                    input_shape=(Chans, Samples, ThirdAxis),
+                    use_bias=False))
+    model.add(BatchNormalization())
+    model.add(DepthwiseConv2D((Chans, 1), use_bias=False,
+                             depth_multiplier=D,
+                             depthwise_constraint=max_norm(1.)))
+    model.add(BatchNormalization())
+    model.add(Activation('elu'))
+    model.add(AveragePooling2D((1, 4)))
+    model.add(Dropout(dropoutRate))
+
+    model.add(SeparableConv2D(F2, (1, 16),
+                             use_bias=False, padding='same'))
+    model.add(BatchNormalization())
+    model.add(Activation('elu'))
+    model.add(AveragePooling2D((1, 8)))
+    model.add(Dropout(dropoutRate))
+
+    model.add(Flatten(name='flatten'))
+
+    model.add(Dense(nb_classes, name='dense',
+                  kernel_constraint=max_norm(norm_rate)))
+    model.add(Activation('softmax', name='softmax'))
+    opt = Adam(lr=l_rate)
+    model.summary()
+    return model, opt
+
+def EEGNetScheduler(epoch, lr):
+    #Our Values
+    lr_vals = [0.01, 0.001, 0.0001]
+    if epoch < 20:
+        return lr_vals[0]
+    elif epoch < 50:
+        return lr_vals[1]
+    else:
+        return lr_vals[2]
+
+def perform_crossval(X, Y, model, n_splits, epochs, batch_size, n_classes=2, opt=Adam()):
     print("Performing cross-validation on model: " + model.name)
     #Create our K-Folds. Use shuffle, as the data is not randomised.
     skf = StratifiedKFold(n_splits=n_splits, shuffle=True)

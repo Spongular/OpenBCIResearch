@@ -112,6 +112,10 @@ def reshape_4to5(data):
     reshaped_data = np.expand_dims(data, 4)
     return reshaped_data
 
+def reshape_3to4(data):
+    reshaped_data = np.expand_dims(data, 3)
+    return reshaped_data
+
 def normalise(data):
     norm_data = (data - np.mean(data)) / np.std(data)
     norm_data = norm_data.astype('float32')
