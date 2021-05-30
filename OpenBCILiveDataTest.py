@@ -29,6 +29,8 @@ board = BoardShim(BoardIds.SYNTHETIC_BOARD.value, params)
 board.prepare_session()
 board.start_stream()
 
+print(board.get_sampling_rate(board.board_id))
+
 #Add a 1 to the marker channel every second for ten seconds.
 for i in range(10):
     msg.text = 'Awaiting Stimuli...'
@@ -39,6 +41,8 @@ for i in range(10):
     board.insert_marker(1)
     time.sleep(1)
 data = board.get_board_data()
+core.wait(2)
+data = np.concatenate((data, board.get_board_data()), axis=1)
 board.stop_stream()
 board.release_session()
 
