@@ -24,10 +24,22 @@ def generateSyntheticBoard():
     board = BoardShim(BoardIds.SYNTHETIC_BOARD.value, params)
     return board
 
-def generateOpenBCIBoard():
+#Note: May need to apply driver fix if there is latency.
+#https://docs.openbci.com/docs/10Troubleshooting/FTDI_Fix_Windows
+#Serial Port information can be found in Device Manager. Should be in form COM*.
+def generateOpenBCIBoard(serial_port, type='ganglion', mac_address=None, timeout=15):
+    #Create params.
     params = BrainFlowInputParams()
-    board = BoardShim(BoardIds.SYNTHETIC_BOARD.value, params)
-    return board
+
+    if type == 'ganglion':
+        params.serial_port = serial_port #This is the port for the USB.
+        params.timeout = timeout
+        if mac_address is not None:
+            params.mac_address = mac_address
+        board = BoardShim(1, params)
+        return board
+    else:
+        raise Exception("Error: Invalid board type selected. Only 'ganglion' is currently supported.")
 
 #This is the stimulator for motor imagery.
 class MotorImageryStimulator:
@@ -38,23 +50,23 @@ class MotorImageryStimulator:
         self.stim_time = stim_time
         self.wait_time = wait_time
         self.stim_count = stim_count
-        self.stim_names = None
-        self.stim_images = None
+        self.stim_names = []
+        self.stim_images = []
 
         #If we are not passed a list of image locations, we use the default.
         if stim_images == []:
             self.stim_images = [] #This will hold the strings for the location of the stim images.
-            self.stim_images.append('INSERT_NON_STIM_IMAGE_LOCATION') #This is our 'blank canvas'
+            self.stim_images.append('StimImages\\stim_empty.png') #This is our 'blank canvas'
             self.stim_names.append('WAIT')
             if stim_type == 'lr':
-                self.stim_images.append('INSERT_LEFT_HAND_STIM_IMAGE_LOCATION')
+                self.stim_images.append('StimImages\\stim_left.png')
                 self.stim_names.append('LEFT')
-                self.stim_images.append('INSERT_RIGHT_HAND_STIM_IMAGE_LOCATION')
+                self.stim_images.append('StimImages\\stim_right.png')
                 self.stim_names.append('RIGHT')
             elif stim_type == 'hf':
-                self.stim_images.append('INSERT_HANDS_STIM_IMAGE_LOCATION')
+                self.stim_images.append('StimImages\\stim_up.png')
                 self.stim_names.append('HANDS')
-                self.stim_images.append('INSERT_FEET_STIM_IMAGE_LOCATION')
+                self.stim_images.append('StimImages\\stim_down.png')
                 self.stim_names.append('FEET')
             else:
                 raise Exception("Error: stim_type must be either 'lr' or 'hf' when stim_images = []")
@@ -171,29 +183,36 @@ class MotorImageryStimulator:
         #Turn off autodraw for the message.
         core.wait(2.0)
         msg.setAutoDraw(False)
+        stim_win.flip()
 
         # Display the non-stim image
         im = visual.ImageStim(stim_win, self.stim_images[0])
         im.setAutoDraw(True)
+        stim_win.flip()
 
         #While our stim_bag has elements, we run through them.
         while(len(stim_bag) > 0):
             #Ensure the non-stim image is displayed and then wait.
             im.image = self.stim_images[0]
+            stim_win.flip()
             core.wait(self.wait_time)
 
             #Grab our stim from the bag and then wait for the stim time.
             im.image = self.stim_images[stim_bag.pop()]
+            stim_win.flip()
             core.wait(self.stim_time)
 
         #Display the non-stim for a final wait time.
         im.image = self.stim_images[0]
+        stim_win.flip()
         core.wait(self.wait_time)
 
         #Remove image and display final message
         im.setAutoDraw(False)
+        stim_win.flip()
         msg.text = "Testing Run Complete..."
         msg.setAutoDraw(True)
+        stim_win.flip()
         core.wait(3)
         stim_win.close()
         return
@@ -218,10 +237,12 @@ class MotorImageryStimulator:
         # Turn off autodraw for the message.
         core.wait(2.0)
         msg.setAutoDraw(False)
+        stim_win.flip()
 
         # Display the non-stim image
         im = visual.ImageStim(stim_win, self.stim_images[0])
         im.setAutoDraw(True)
+        stim_win.flip()
 
         #Prepare the data stream
         self.board.prepare_session()
@@ -234,12 +255,14 @@ class MotorImageryStimulator:
         while (len(stim_bag) > 0):
             # Ensure the non-stim image is displayed and then wait.
             im.image = self.stim_images[0]
+            stim_win.flip()
             core.wait(self.wait_time)
 
             #Set stim image, marker and wait.
             stim = stim_bag.pop()
             self.board.insert_marker(stim)
             im.image = self.stim_images[stim]
+            stim_win.flip()
             core.wait(self.stim_time)
 
             #Empty the ring buffer into our data.
@@ -247,6 +270,7 @@ class MotorImageryStimulator:
 
         #Display the non-stim for a final wait time.
         im.image = self.stim_images[0]
+        stim_win.flip()
         core.wait(self.wait_time)
 
         #Grab the final bit of data and end the stream.
@@ -256,8 +280,10 @@ class MotorImageryStimulator:
 
         # Remove image and display final message
         im.setAutoDraw(False)
+        stim_win.flip()
         msg.text = "Testing Run Complete..."
         msg.setAutoDraw(True)
+        stim_win.flip()
         core.wait(3)
         stim_win.close()
 

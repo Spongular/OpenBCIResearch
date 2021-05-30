@@ -5,12 +5,16 @@ import time
 import matplotlib
 import numpy as np
 import psychopy
+import LiveBCI
 
 import matplotlib.pyplot as plt
 from brainflow.board_shim import BoardShim, BrainFlowInputParams, BoardIds
 from psychopy import visual, core
 
 import mne
+
+mi_stim = LiveBCI.MotorImageryStimulator(4., 4., 5)
+mi_stim.test_stim()
 
 #Set log level.
 BoardShim.enable_dev_board_logger()
