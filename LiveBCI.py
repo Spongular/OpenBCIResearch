@@ -44,7 +44,7 @@ def generateOpenBCIBoard(serial_port, type='ganglion', mac_address=None, timeout
 #This is the stimulator for motor imagery.
 class MotorImageryStimulator:
     def __init__(self, stim_time, wait_time, stim_count, stim_images=[], stim_image_size=[600,600], stim_type='lr',
-                 board=None, ch_count=4, classifier=None, classifier_type=None, output_location='DEFAULT',
+                 board=None, ch_count=4, ch_names=[], classifier=None, classifier_type=None, output_location='DEFAULT',
                  visualize=False):
         #Stimulation Attributes
         self.stim_time = stim_time
@@ -86,16 +86,16 @@ class MotorImageryStimulator:
         #EEG Input Attributes
         self.board = board
         self.ch_count = ch_count
-        # self.ch_names = ch_names
+        self.ch_names = ch_names
 
-        # #If our channel names aren't provided, we generate generic ones.
-        # if len(self.ch_names) < 1:
-        #     print("No channel names provided. Using generic names")
-        #     for x in range(0, ch_count):
-        #         self.ch_names.append("CH{num}".format(num=x))
-        #
-        # #And append our stim channel name.
-        # self.ch_names.append("STIM001")
+        #If our channel names aren't provided, we generate generic ones.
+        if len(self.ch_names) < 1:
+            print("No channel names provided. Using generic names")
+            for x in range(0, ch_count):
+                self.ch_names.append("CH{num}".format(num=x))
+
+        #And append our stim channel name.
+        self.ch_names.append("STIM001")
 
         #Classifier Attributes
         self.classifier = classifier
@@ -153,12 +153,10 @@ class MotorImageryStimulator:
 
         # Creating MNE objects from brainflow data arrays
         ch_types = ['eeg'] * len(eeg_channels)
-        ch_names = self.board.get_eeg_names(self.board.board_id)
         # Need to append 'stim' info.
         ch_types.append('stim')
-        ch_names.append('STI001')
         sfreq = self.board.get_sampling_rate(self.board.board_id)
-        info = mne.create_info(ch_names=ch_names, sfreq=sfreq, ch_types=ch_types)
+        info = mne.create_info(ch_names=self.ch_names, sfreq=sfreq, ch_types=ch_types)
         raw = mne.io.RawArray(eeg_data, info)
 
         return raw
