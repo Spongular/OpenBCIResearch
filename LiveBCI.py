@@ -148,7 +148,7 @@ class MotorImageryStimulator:
         eeg_data = self.eeg_data[eeg_channels, :]
         eeg_data = eeg_data / 1000000  # BrainFlow returns uV, convert to V for MNE
         # Add the marker/stim channel to the data.
-        eeg_data = np.concatenate((eeg_data, eeg_data[[self.board.get_marker_channel(self.board.board_id)], :]),
+        eeg_data = np.concatenate((eeg_data, self.eeg_data[[self.board.get_marker_channel(self.board.board_id)], :]),
                                   axis=0)
 
         # Creating MNE objects from brainflow data arrays
@@ -296,8 +296,8 @@ class MotorImageryStimulator:
         if self.eeg_data is None:
             raise Exception("Error: No EEG data has been recorded.")
 
-        #Append file type to name.
-        file_name = file_name + '_raw.fif'
+        #Format the file name to include format and directory.
+        file_name = 'LiveRecordings\\MotorImagery\\' + file_name + '_raw.fif'
 
         #Change the data to raw and save.
         data = self.eeg_to_raw()
