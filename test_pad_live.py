@@ -15,11 +15,27 @@ board = LiveBCI.generateOpenBCIBoard('COM3', 'ganglion', timeout=15)
 
 test = LiveBCI.MotorImageryStimulator(stim_time=4, wait_time=4, stim_count=5, stim_type='lr', board=board)
 
-raw = test.run_stim(return_raw=True)
+# raw = test.run_stim(return_raw=True)
+#
+# raw.plot(block=True)
+#
+# print(raw)
+#
+# test.save_data(file_name='test_ganglion_01')
 
-raw.plot(block=True)
+test.load_data(file='LiveRecordings\\MotorImagery\\test_ganglion_01_raw.fif')
 
-print(raw)
 
-test.save_data(file_name='test_ganglion_01')
+test.eeg_to_epochs(tmin=0., tmax=4., event_dict=dict(T1=1, T2=2), stim_ch='STIM001').plot(block=True)
 
+test.epochs.plot_psd()
+
+test.clear_epochs()
+
+test.filter_raw(min=4.)
+
+test.eeg_to_epochs(tmin=0., tmax=4., event_dict=dict(T1=1, T2=2), stim_ch='STIM001').plot(block=True)
+
+test.epochs.plot_psd(fmin=4.)
+
+test.epochs_to_evoked().plot()

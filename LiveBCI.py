@@ -13,6 +13,8 @@ import numpy as np
 
 #MNE EEG Decoding Imports
 import mne
+from mne import pick_types, Epochs, events_from_annotations
+from mne import io
 
 #Machine Learning Imports
 
@@ -95,7 +97,7 @@ class MotorImageryStimulator:
                 self.ch_names.append("CH{num}".format(num=x))
 
         #And append our stim channel name.
-        self.ch_names.append("STIM001")
+        self.ch_names.append("STI001")
 
         #Classifier Attributes
         self.classifier = classifier
@@ -110,6 +112,11 @@ class MotorImageryStimulator:
         self.output_location = output_location
         self.visualize = visualize
         self.eeg_data = None
+        self.raw = None
+        self.epochs = None
+        self.evoked = None
+
+    #---------------------------Setting Attributes---------------------------------------------------------------------#
 
     #Attribute Changing Functions
     def set_board(self, board):
@@ -138,6 +145,8 @@ class MotorImageryStimulator:
     def set_output_location(self, output_location):
         self.output_location = output_location
 
+    #---------------------------Data Manipulation/Clearing-------------------------------------------------------------#
+
     def eeg_to_raw(self):
         #Check to make sure we have data.
         if self.eeg_data is None:
@@ -157,10 +166,100 @@ class MotorImageryStimulator:
         ch_types.append('stim')
         sfreq = self.board.get_sampling_rate(self.board.board_id)
         info = mne.create_info(ch_names=self.ch_names, sfreq=sfreq, ch_types=ch_types)
-        raw = mne.io.RawArray(eeg_data, info)
+        self.raw = mne.io.RawArray(eeg_data, info)
 
-        return raw
+        return self.raw
 
+    def filter_raw(self, min=4., max=None, notch_val=50.):
+        #Check that we have data.
+        if self.raw is None:
+            raise Exception("Error: There is no raw data to filter.")
+
+        print("\nNotch Filtering at {nv}hz...".format(nv=notch_val))
+        self.raw.notch_filter(notch_val, filter_length='auto', phase='zero')
+
+        if max is None:
+            print("\nPerforming highpass filter from {l}Hz...".format(l=min))
+            self.raw.filter(min, max, fir_design='firwin', skip_by_annotation=('edge', 'bad_acq_skip'))
+        elif max > min:
+            print("\nPerforming bandpass filter on range {l}Hz to {h}Hz...".format(l=min, h=max))
+            self.raw.filter(min, max, fir_design='firwin', skip_by_annotation=('edge', 'bad_acq_skip'))
+        else:
+            raise Exception("Error: Attribute \'max\' is invalid. Specify either \'None\' or a value greater than "
+                            "\'min\'.")
+
+        return self.raw
+
+    #The attribute recalc_data is used when new data has been recorded, but old raw is still recorded,
+    #and not properly removed.
+    def eeg_to_epochs(self, tmin, tmax, event_dict=dict(T1=2, T2=3), preprocess='highpass',
+                      recalc_data=False, eeg_reject_uV=None, plot_bads=False, stim_ch='STI001'):
+        #If we have no data at all...
+        if self.eeg_data is None and self.raw is None:
+            raise Exception("Error: No eeg data is present.")
+        #Otherwise, if we have data but need new raw...
+        if recalc_data or self.raw is None:
+            self.eeg_to_raw()
+
+        print("\nGathering Events...")
+        #Now, we form the epochs.
+        events = mne.find_events(raw=self.raw, stim_channel=stim_ch)
+        print("\nEvents:")
+        print(events)
+
+        print('\nSetting Picks...')
+        picks = pick_types(self.raw.info, meg=False, eeg=True, stim=False, eog=False, exclude='bads')
+
+        print('\nForming Epochs...')
+        # Now, if we have no reject, we perform it normally, otherwise we drop epochs based on the threshold.
+        if eeg_reject_uV is None:
+            epochs = Epochs(self.raw, events, event_dict, tmin, tmax, proj=True, picks=picks,
+                            baseline=None, preload=True)
+        else:
+            epochs = Epochs(self.raw, events, event_dict, tmin, tmax, proj=True, picks=picks,
+                            baseline=None, preload=True, reject=dict(eeg=eeg_reject_uV * 1e-6))
+
+        print('\nDropping Bads...')
+        epochs.drop_bad()
+        print(epochs.drop_log)
+
+        # Plot our bads.
+        if plot_bads:
+            epochs.plot_drop_log()
+
+        #Set epochs and return
+        self.epochs = epochs
+        return self.epochs
+
+    #Resamples the epochs to a specific rate. As resampling can cause edge artifacts, it's recommended
+    #that the epochs be longer on either edge than required, and then cropped to avoid the issue.
+    def resample_epochs(self, new_rate=150, crop_val=0.):
+        return
+
+    def epochs_to_evoked(self):
+        # If we have no data at all...
+        if self.eeg_data is None and self.raw is None and self.epochs is None:
+            raise Exception("Error: No eeg data is present.")
+        elif self.epochs is None:
+            raise Exception("Error: No epoch data is present.")
+
+        #Average the epochs to get the evoke data.
+        self.evoked = self.epochs.average()
+        return self.evoked
+
+    def clear_raw(self):
+        self.raw = None
+        return
+
+    def clear_epochs(self):
+        self.epochs = None
+        return
+
+    def clear_evoked(self):
+        self.evoked = None
+        return
+
+    #---------------------------Stimulation Tests----------------------------------------------------------------------#
 
     #This is used to test the stimulation window.
     #Does not read or record from board.
@@ -254,11 +353,12 @@ class MotorImageryStimulator:
             # Ensure the non-stim image is displayed and then wait.
             im.image = self.stim_images[0]
             stim_win.flip()
+            self.board.insert_marker(1)
             core.wait(self.wait_time)
 
             #Set stim image, marker and wait.
             stim = stim_bag.pop()
-            self.board.insert_marker(stim)
+            self.board.insert_marker(stim + 1)
             im.image = self.stim_images[stim]
             stim_win.flip()
             core.wait(self.stim_time)
@@ -291,6 +391,14 @@ class MotorImageryStimulator:
         else:
             return
 
+    #---------------------------Offline Classification-----------------------------------------------------------------#
+
+
+    #---------------------------Online Classification------------------------------------------------------------------#
+
+
+    #---------------------------Data Saving/Loading--------------------------------------------------------------------#
+
     def save_data(self, file_name, double=False):
         # Check to make sure we have data.
         if self.eeg_data is None:
@@ -308,3 +416,16 @@ class MotorImageryStimulator:
             data.save(fname=file_name)
         return
 
+    def load_data(self, file, format='fif', overwrite=False):
+        #Deal with the situation where there is data already.
+        if self.raw is not None and overwrite == False:
+            raise Exception('Error: Data already present. Please set overwrite=True to load new data.')
+
+        if format == 'fif':
+            self.raw = io.read_raw_fif(fname=file, preload=True)
+        elif format == 'edf':
+            self.raw = io.read_raw_edf(fname=file, preload=True)
+        else:
+            raise Exception('Error: Invalid file type. please specify \'fif\' or \'edf\' for attribute \'format\'.')
+
+        return self.raw
