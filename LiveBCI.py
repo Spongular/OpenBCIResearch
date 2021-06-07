@@ -17,6 +17,8 @@ from mne import pick_types, Epochs, events_from_annotations
 from mne import io
 
 #Machine Learning Imports
+from keras.utils import to_categorical
+from keras.models import Model, load_model
 
 #PsychoPi EEG Stimulation Imports
 from psychopy import visual, core
@@ -104,9 +106,9 @@ class MotorImageryStimulator:
         self.classifier_type = classifier_type
 
         #Check the type to ensure it's correct.
-        if self.classifier_type != 'sk-learn' and self.classifier_type != 'keras'\
+        if self.classifier_type != 'sklearn' and self.classifier_type != 'keras'\
                 and self.classifier_type is not None:
-            raise Exception("Error: classifier_type must be either 'sk-learn', 'keras' or None")
+            raise Exception("Error: classifier_type must be either 'sklearn', 'keras' or None")
 
         #IO and Visualising Attributes
         self.output_location = output_location
@@ -233,8 +235,17 @@ class MotorImageryStimulator:
 
     #Resamples the epochs to a specific rate. As resampling can cause edge artifacts, it's recommended
     #that the epochs be longer on either edge than required, and then cropped to avoid the issue.
-    def resample_epochs(self, new_rate=150, crop_val=0.):
-        return
+    def resample_epochs(self, new_rate=160):
+        #Make sure we have epoch data.
+        if self.epochs is None:
+            raise Exception("Error: No epoch data is present.")
+
+        #Resample.
+        print('Sampling rate before: {sfreq}Hz'.format(sfreq=self.epochs.info['sfreq']))
+        self.epochs = self.epochs.resample(new_rate)
+        print('Sampling rate after: {sfreq}Hz'.format(sfreq=self.epochs.info['sfreq']))
+
+        return self.epochs
 
     def epochs_to_evoked(self):
         # If we have no data at all...
@@ -390,6 +401,68 @@ class MotorImageryStimulator:
             return self.eeg_to_raw()
         else:
             return
+
+    #---------------------------Classification Tools-------------------------------------------------------------------#
+
+    def get_data_labels(self, event_bounds=[0,-1], scale=None):
+        #Check the epochs.
+        if self.epochs is None:
+            raise Exception("Error: No epoch data found.")
+
+        #Grab the data
+        if scale is not None:
+            data = self.epochs.get_data() * scale
+        else:
+            data = self.epochs.get_data()
+
+        #Get the labels
+        labels = self.epochs.events[event_bounds[0], event_bounds[1]]
+
+        return data, labels
+
+    #Accepts a Numpy Array and expands it.
+    def expand_data(self, data, dims=3):
+        if dims <= data.ndim:
+            raise Exception("Error: Cannot raise dimensions below or equal to current dimension count.")
+        data = np.expand_dims(data, 3)
+        return data
+
+    #Accepts a list of label sets and one-hot encodes them to the number of categories there are.
+    def one_hot_encode(self, label_sets=[], categories=2):
+        for x in range(0, len(label_sets)):
+            label_sets[x] = to_categorical(label_sets[x], categories)
+        return label_sets
+
+    def set_keras_classifier(self, classifier):
+        self.classifier = classifier
+        self.classifier_type = 'keras'
+        return
+
+    def set_sklearn_classifier(self, classifier):
+        self.classifier = classifier
+        self.classifier_type = 'sklearn'
+        return
+
+    def load_keras_classifier(self, path, type='model'):
+        if type == 'model':
+            #In this instance, we just make a new model from the file.
+            self.classifier = load_model(path)
+            self.classifier_type = 'keras'
+        elif type == 'weights':
+            #We need a model to just set weights
+            if self.classifier is None:
+                raise Exception("Error: Loading keras weights requires a model.")
+            if self.classifier_type != 'keras':
+                raise Exception("Error: Existing classifier object is not a keras model.")
+            #Here, we're assuming that we have a valid model that fits the weights specified in path.
+            #If we don't, well, too bad.
+            self.classifier.load_weights(path)
+        else:
+            raise Exception("Error: Invalid type \'{t}\' specified.".format(t=type))
+        return
+
+    def load_sklearn_classifier(self, path):
+        return
 
     #---------------------------Offline Classification-----------------------------------------------------------------#
 

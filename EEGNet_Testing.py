@@ -25,7 +25,7 @@ backend.clear_session()
 mne.set_log_level('WARNING')
 
 #load our data.
-raw = data_loading.get_all_mi_between(1, 81, 2, ["088", "092", "100"])
+raw = data_loading.get_all_mi_between(1, 110, 1, ["088", "092", "100"])
 
 #Run a Highpass filter to get rid of low-frequency drift and other issues.
 #This isn't specified in the paper, but is common practice and thus assumed.
@@ -34,7 +34,8 @@ raw = gen_tools.preprocess_highpass(raw, min=4., fir_design='firwin')
 #Epoch our data.
 tmin = 0.
 tmax = 3.
-data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=["C3", "C4", "Cz"], scale=1000)
+#(C3, C4 and Cz got 70% or so.)
+data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=["Fp1", "Fp2", "O1", "O2"], scale=1000)
 
 #We don't need the epoch objects as we have the data/labels.
 del epochs
@@ -61,10 +62,10 @@ y_test = to_categorical(y_test, 2)
 
 #Generate model, optimiser and checkpointer.
 dropout = 0.0
-model, opt = keras_classifiers.convEEGNet(input_shape=X_train.shape, chan=3, n_classes=2, d_rate=dropout, first_tf_size=128)
+model, opt = keras_classifiers.convEEGNet(input_shape=X_train.shape, chan=4, n_classes=2, d_rate=dropout, first_tf_size=128)
 #model, opt = keras_classifiers.test(nb_classes=2, Chans=data.shape[1], Samples=data.shape[2], ThirdAxis=data.shape[3],
 #                                     dropoutRate=0.5, kernLength=32, F1=8, D=2, F2=16,)
-filepath = "NN_Weights/convEEGNet/3-Channel-No-dropout-{epoch:02d}-{val_accuracy:.2f}.h5"
+filepath = "NN_Weights/convEEGNet/4-Channel-HeadbandLayout-MotorMovement--No-dropout-{epoch:02d}-{val_accuracy:.2f}.h5"
 checkpointer = ModelCheckpoint(filepath=filepath, verbose=1,
                                save_best_only=True)
 model.compile(loss='categorical_crossentropy', optimizer=opt,
