@@ -19,6 +19,7 @@ from mne import io
 #Machine Learning Imports
 from keras.utils import to_categorical
 from keras.models import Model, load_model
+from sklearn.utils import shuffle
 
 #PsychoPi EEG Stimulation Imports
 from psychopy import visual, core
@@ -404,7 +405,7 @@ class MotorImageryStimulator:
 
     #---------------------------Classification Tools-------------------------------------------------------------------#
 
-    def get_data_labels(self, event_bounds=[0,-1], scale=None):
+    def __get_data_labels(self, event_bounds=[0,-1], scale=None):
         #Check the epochs.
         if self.epochs is None:
             raise Exception("Error: No epoch data found.")
@@ -421,17 +422,56 @@ class MotorImageryStimulator:
         return data, labels
 
     #Accepts a Numpy Array and expands it.
-    def expand_data(self, data, dims=3):
+    def __expand_data(self, data, dims=3):
         if dims <= data.ndim:
             raise Exception("Error: Cannot raise dimensions below or equal to current dimension count.")
         data = np.expand_dims(data, 3)
         return data
 
     #Accepts a list of label sets and one-hot encodes them to the number of categories there are.
-    def one_hot_encode(self, label_sets=[], categories=2):
+    def __one_hot_encode(self, label_sets=[], categories=2):
         for x in range(0, len(label_sets)):
             label_sets[x] = to_categorical(label_sets[x], categories)
         return label_sets
+
+
+    def __classify(self, scale=None, num_classes=2, class_weights=None):
+        #Grab our data
+        if scale is None:
+            X = self.epochs.get_data()
+        else:
+            X = self.epochs.get_data() * scale
+        y = self.epochs.events[:, -1] - 2 #Assume that T0 is rest, as it should be.
+
+        #Shuffle the data to avoid issues.
+        X, y = shuffle(X, y, random_state=1)
+
+        if self.classifier_type == 'keras':
+            #For keras, we grab our model's expected input and change our data to match.
+            input_shape = self.classifier.get_config()["layers"][0]["config"]["batch_input_shape"]
+            # Make sure that the values we want match. i.e. input if input is (None, 128, 96, 1), our data must be
+            # at least (num_trials, 128, 96, 1 or None).
+            if input_shape[1] != X.shape[1] or input_shape[2] != X.shape[2]:
+                raise Exception("Error: Data shape {data_shape} is not ".format(data_shape=X.shape) +
+                                "compatible with input shape of {input_shape}.".format(input_shape=input_shape))
+            if len(input_shape) > len(X.shape):
+                X = self.__expand_data(X, dims = 3)
+            elif len(input_shape) == len(X.shape) and len(input_shape) > 3:
+                if input_shape[3] != X.shape[3]:
+                    raise Exception("Error: Data shape {data_shape} is not ".format(data_shape=X.shape) +
+                                "compatible with input shape of {input_shape}.".format(input_shape=input_shape))
+            #Keras needs one-hot encoded data for labels.
+            y = self.__one_hot_encode(y, num_classes)
+            if class_weights is None:
+                class_weights = {0:1, 1:1}
+        elif self.classifier_type == 'sklearn':
+            return #Put some stuff here when I care.
+
+        #This function is universal between Keras and Sk-learn
+        result = self.classifier.predict(X)
+
+        #Return X and y for metric calculations.
+        return result, X, y
 
     def set_keras_classifier(self, classifier):
         self.classifier = classifier
@@ -464,8 +504,31 @@ class MotorImageryStimulator:
     def load_sklearn_classifier(self, path):
         return
 
+
     #---------------------------Offline Classification-----------------------------------------------------------------#
 
+    def offline_classification(self, metrics=['accuracy'], data_scale=None):
+        #Check for data
+        if self.epochs is None:
+            if self.raw is None:
+                raise Exception("Error: No epochs nor raw eeg data present. Please record or load data.")
+            raise Exception("Error: No epochs present. Please process raw eeg into epochs with eeg_to_epochs")
+
+        #Depending on the method, we'll perform our classification.
+        print("\nPerforming classification...")
+        result, X, y = self.__classify(scale=data_scale, num_classes=(len(self.stim_images) - 1))
+
+        if 'accuracy' in metrics:
+            #Need to differentiate as Keras needs one-hot encoded labels,
+            #but sklearn doesn't, thus there are different methods.
+            if self.classifier_type == 'keras':
+                acc = np.mean(result.argmax(axis=-1) == y.argmax(axis=-1))
+                print("\nAccuracy: {accuracy}".format(accuracy=acc))
+            elif self.classifier_type == 'sklearn':
+                #insert something here.
+                return
+        #if ''
+        return
 
     #---------------------------Online Classification------------------------------------------------------------------#
 
