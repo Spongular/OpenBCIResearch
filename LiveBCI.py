@@ -535,13 +535,18 @@ class MotorImageryStimulator:
 
     #---------------------------Data Saving/Loading--------------------------------------------------------------------#
 
-    def save_data(self, file_name, double=False):
+    def save_data(self, file_name, double=False, type='imagery'):
         # Check to make sure we have data.
         if self.eeg_data is None:
             raise Exception("Error: No EEG data has been recorded.")
+        if type != 'imagery' and type != 'movement':
+            raise Exception("Error: Parameter 'type' must be string 'imagery' or 'movement'")
 
-        #Format the file name to include format and directory.
-        file_name = 'LiveRecordings\\MotorImagery\\' + file_name + '_raw.fif'
+        # Format the file name to include format and directory.
+        if type == 'imagery':
+            file_name = 'LiveRecordings\\MotorResponses\\Imagery\\' + file_name + '_raw.fif'
+        elif type == 'movement':
+            file_name = 'LiveRecordings\\MotorResponses\\Movement\\' + file_name + '_raw.fif'
 
         #Change the data to raw and save.
         data = self.eeg_to_raw()

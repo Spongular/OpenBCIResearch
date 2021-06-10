@@ -1,0 +1,34 @@
+
+Subjects:
+    -Subject 1: Male, 24 years old, right-handed, no prior BCI experience.
+
+Subject Instructions:
+    Each subject was instructed to remain relaxed until stimulus onset.
+    Upon stimulus onset, subjects were instructed to engage the specified activity, be it motor movement or imagery,
+    in accordance with the details below. Subjects were instructed to maintain said activity for the duration of the
+    stimulus being displayed and to then relax upon the stimulus being cleared.
+    Subjects were instructed to avoid blinking during motor imagery or activity, but allowed such action during rest
+    periods.
+
+Experimental Setup:
+    -Location: Flinders University Tonsley Campus, Room 4.53
+    -Hardware: OpenBCI Ganglion Board (4-Channels), OpenBCI EEG Headband Kit (2 Flat-Snape Dry Electrodes, 2 Comb Dry
+    electrodes), Lenovo Thinkpad Pro 580 Laptop (Recording Device).
+    -Electrode Locations: Fp1, Fp2, O1, O2 (Standard Configuration) C3, C4, Cz (Optimal Configuration)
+
+Methodology:
+    Subjects were presented with stimuli representing a particular direction, and instructed to to either perform the
+    following action or imagine the following action based on the data required.
+        Left Arrow - Open/Close left hand
+        Right Arrow - Open/Close right hand
+        Up Arrow - Open/Close both hands
+        Down Arrow - Move both feet in a circular motion.
+    The stimuli were shown for a total of 4 seconds each, in a randomised order, with a six second break between each
+    stimuli being shown.
+
+Data Format:
+    Experimental data is saved as the standard output of the MNE raw.save() method, in the .fif file format.
+    Channels are named appropriately, and stimulation markers are present in the channel STI001, with a value of 1
+    being representing the onset of rest, 2 representing the onset of left/up arrows and 3 representing onset of
+    right/down arrows.
+    This data is able to be read directly using the MNE raw.load() function, but other programs may not be capable.
