@@ -3,7 +3,7 @@
 import mne
 import numpy as np
 import matplotlib.pyplot as plt
-from mne import pick_types, Epochs, events_from_annotations, concatenate_raws
+from mne import pick_types, Epochs, events_from_annotations, concatenate_raws, find_events
 from mne.channels import make_standard_montage
 from mne.decoding import CSP, Scaler, UnsupervisedSpatialFilter, Vectorizer
 from mne.datasets.eegbci import eegbci
@@ -36,15 +36,15 @@ def preprocess_bandpass(raw, min=1., max=40., fir_design='firwin'):
     raw.filter(min, max, fir_design=fir_design, skip_by_annotation='edge')  # Bandpass
     return raw
 
-def preprocess_highpass(raw, min=1., fir_design='firwin'):
+def preprocess_highpass(raw, min=1., fir_design='firwin', notch_val=60):
     print("Standardising Raw, setting montage and fixing channel names...")
     #Fix our settings for the raw.
     eegbci.standardize(raw)
     raw.set_montage("standard_1020", match_case=False)
     raw.rename_channels(lambda s: s.strip("."))
     # Filter it.
-    print("Performing Notch Filtering at 60Hz to remove line noise...")
-    raw.notch_filter(60, filter_length='auto', phase='zero')
+    print("Performing Notch Filtering at {n} to remove line noise...".format(n=notch_val))
+    raw.notch_filter(notch_val, filter_length='auto', phase='zero')
     print("Performing highpass filter in at %fHz..." % min)
     raw.filter(min, None, fir_design=fir_design, skip_by_annotation=('edge', 'bad_acq_skip'))  # Bandpass
     return raw
@@ -89,6 +89,19 @@ def epoch_data(raw, tmin, tmax, pick_list=[], plot_bads=False, eeg_reject_uV=Non
         data = epochs.get_data() * scale
 
     return data, labels, epochs
+
+def epoch_ssvep_MAMEM(raw, tmin, tmax, pick_list=[]):
+    event_id = {"6.66": 1, "7.50": 2, "8.57": 3, "10.00": 4, "12.00": 5}
+    events = find_events(raw=raw, stim_channel='stim')
+    if len(pick_list) > 0:
+        picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False, exclude='bads',
+                           selection=pick_list)
+    else:
+        picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False, exclude='bads')
+    # Additionally, for our system, we want the 10-20 equivalents for the channels, not all 256, so...
+    ssvep_epochs = Epochs(raw, events, event_id, tmin, tmax, proj=True,
+                          baseline=None, preload=True, picks=picks)
+    return ssvep_epochs
 
 #Performs a Fast Fourier Transform on each epoch.
 def fastfourier_transform(epochs):
