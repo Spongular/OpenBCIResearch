@@ -94,7 +94,7 @@ class MotorImageryStimulator:
         self.ch_names = ch_names
 
         #If our channel names aren't provided, we generate generic ones.
-        if len(self.ch_names) < 1:
+        if len(ch_names) < 1:
             print("No channel names provided. Using generic names")
             for x in range(0, ch_count):
                 self.ch_names.append("CH{num}".format(num=x))
@@ -566,6 +566,20 @@ class MotorImageryStimulator:
             self.raw = io.read_raw_fif(fname=file, preload=True)
         elif format == 'edf':
             self.raw = io.read_raw_edf(fname=file, preload=True)
+        else:
+            raise Exception('Error: Invalid file type. please specify \'fif\' or \'edf\' for attribute \'format\'.')
+
+        return self.raw
+
+    def load_multiple_data(self, files=[], format='fif', overwrite=False):
+        #Deal with the situation where there is data already.
+        if self.raw is not None and overwrite == False:
+            raise Exception('Error: Data already present. Please set overwrite=True to load new data.')
+
+        if format == 'fif':
+            self.raw = io.concatenate_raws([io.read_raw_fif(f, preload=True) for f in files])
+        elif format == 'edf':
+            self.raw = io.concatenate_raws([io.read_raw_edf(f, preload=True) for f in files])
         else:
             raise Exception('Error: Invalid file type. please specify \'fif\' or \'edf\' for attribute \'format\'.')
 

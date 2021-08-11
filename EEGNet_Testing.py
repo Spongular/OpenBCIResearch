@@ -36,7 +36,7 @@ tmin = 0.
 tmax = 3.
 #(C3, C4 and Cz got 70% or so.)
 data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=["Fp1", "Fp2", "O1", "O2"], scale=1000)
-
+print(epochs.ch_names)
 #We don't need the epoch objects as we have the data/labels.
 del epochs
 
@@ -61,11 +61,11 @@ y_val = to_categorical(y_val, 2)
 y_test = to_categorical(y_test, 2)
 
 #Generate model, optimiser and checkpointer.
-dropout = 0.0
+dropout = 0.5
 model, opt = keras_classifiers.convEEGNet(input_shape=X_train.shape, chan=4, n_classes=2, d_rate=dropout, first_tf_size=128)
 #model, opt = keras_classifiers.test(nb_classes=2, Chans=data.shape[1], Samples=data.shape[2], ThirdAxis=data.shape[3],
 #                                     dropoutRate=0.5, kernLength=32, F1=8, D=2, F2=16,)
-filepath = "NN_Weights/convEEGNet/4-Channel-HeadbandLayout-MotorMovement--No-dropout-{epoch:02d}-{val_accuracy:.2f}.h5"
+filepath = "NN_Weights/convEEGNet/4-channel-headband/4-Channel-HeadbandLayout-MotorMovement--50%-dropout-{epoch:02d}-{val_accuracy:.2f}.h5"
 checkpointer = ModelCheckpoint(filepath=filepath, verbose=1,
                                save_best_only=True)
 model.compile(loss='categorical_crossentropy', optimizer=opt,
