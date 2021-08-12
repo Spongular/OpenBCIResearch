@@ -1,5 +1,5 @@
-#https://pyriemann.readthedocs.io/en/latest/auto_examples/motor-imagery/plot_single.html#sphx-glr-auto-examples-motor-imagery-plot-single-py
-#NOTE: pyRiemann has issues with Scikit-learn v.24, so in pyRiemann.clustering add...
+# https://pyriemann.readthedocs.io/en/latest/auto_examples/motor-imagery/plot_single.html#sphx-glr-auto-examples-motor-imagery-plot-single-py
+# NOTE: pyRiemann has issues with Scikit-learn v.24, so in pyRiemann.clustering add...
 # try:
 #     from sklearn.cluster._kmeans import _init_centroids
 # except ImportError:
@@ -40,8 +40,10 @@ from mne.datasets import eegbci
 from mne.decoding import CSP, Scaler, UnsupervisedSpatialFilter, Vectorizer
 
 # pyriemann import
-from pyriemann.classification import MDM, TSclassifier
+from pyriemann.tangentspace import TangentSpace
+from pyriemann.classification import MDM
 from pyriemann.estimation import Covariances
+from pyriemann.spatialfilters import CSP as CovCSP
 
 # sklearn imports
 from sklearn import svm
@@ -52,6 +54,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA, FastICA
 from sklearn.preprocessing import StandardScaler
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.linear_model import LogisticRegression
 
 class ClassifierTester:
     """A Class designed to test EEG data against a variety of classifiers.
@@ -106,37 +109,44 @@ class ClassifierTester:
         ch_list         :   A list of channels to be included when epoching data. By default, and empty list will result
                             in the inclusion of all EEG channels. Uses standard 10-20 channel notations, i.e. ['Fp1', 'Cz']
     """
+
     def __init__(self, data_source='physionet', type='movement', stim_select='lr', subj_range=None,
                  sub_group_incr=5, result_format='acc', gridsearch=None, file=None, filter_bounds=[6., 30.],
                  tmin=0., tmax=4., ch_list=[]):
 
-        type_dict = {('movement', 'lr') : 1,
-                     ('imaginary', 'lr') : 2,
-                     ('movement', 'hf') : 3,
-                     ('imaginary', 'hf') : 4}
+        mne.set_log_level('warning')
+
+        type_dict = {('movement', 'lr'): 1,
+                     ('imaginary', 'lr'): 2,
+                     ('movement', 'hf'): 3,
+                     ('imaginary', 'hf'): 4}
         self.sub_data_list = []
 
-        #First, determine where we get our data.
+        # First, determine where we get our data.
         if data_source == 'physionet':
-            #Define our subject range for iteration
+            # Define our subject range for iteration
             if subj_range is None:
                 r1 = 1
                 r2 = 110
+                print("Selecting {src} data for all subjects".format(src=data_source))
             elif subj_range[0] > 0 and subj_range[1] < 110 and subj_range[0] < subj_range[1]:
                 r1 = subj_range[0]
                 r2 = subj_range[1]
+                print("Selecting {src} data for subjects {start} to {stop}...".format(src=data_source,
+                                                                                      start=subj_range[0],
+                                                                                      stop=subj_range[1]))
             else:
-                raise Exception("Error, subj_range is invalid. Ensure it is two values between 1 and 109, with the first being larger")
-            print("Selecting {src} data for subjects {start} to {stop}...".format(src=data_source,
-                                                                                  start=subj_range[0], stop=subj_range[1]))
-            #Now, iterate through the subjects, filter and epoch each, and pair the data and labels in an ordered list.
+                raise Exception(
+                    "Error, subj_range is invalid. Ensure it is two values between 1 and 109, with the first being larger")
+            # Now, iterate through the subjects, filter and epoch each, and pair the data and labels in an ordered list.
             for sub in range(r1, r2):
                 raw = data_loading.get_single_mi(sub, type_dict[(type, stim_select)])
                 if filter_bounds[1] is None:
                     raw = gen_tools.preprocess_highpass(raw, min=filter_bounds[0])
                 else:
                     raw = gen_tools.preprocess_bandpass(raw, min=filter_bounds[0], max=filter_bounds[1])
-                data, labels = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=ch_list)
+                data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=ch_list)
+                del epochs
                 self.sub_data_list.append([data, labels])
         elif data_source == 'live-movement':
             raise Exception("'live-movement' Not Yet Implemented")
@@ -145,13 +155,14 @@ class ClassifierTester:
         elif data_source == 'mamem-ssvep':
             raise Exception("'mamem-ssvep' Not Yet Implemented")
         else:
-            raise Exception("Error: 'data_source' must be one of 'physionet', 'mamem-ssvep', 'live-imagined' or 'live-movement'")
+            raise Exception(
+                "Error: 'data_source' must be one of 'physionet', 'mamem-ssvep', 'live-imagined' or 'live-movement'")
 
-        #Set misc variables
+        # Set misc variables
         self.group_incr = sub_group_incr
-        self.result_format=result_format
+        self.result_format = result_format
         if file is None:
-            #Make our file name.
+            # Make our file name.
             self.datetime = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
             if data_source == 'physionet':
                 filename = "test-results_{src}_{stim}-{type}_{datetime}".format(src=data_source, stim=stim_select,
@@ -161,12 +172,12 @@ class ClassifierTester:
                                                                                    datetime=self.datetime)
             elif data_source == 'live-movement':
                 filename = "test-results_{src}_{stim}-movement_{datetime}".format(src=data_source, stim=stim_select,
-                                                                                   datetime=self.datetime)
+                                                                                  datetime=self.datetime)
             elif data_source == 'mamem-ssvep':
                 filename = "test-results_{src}_{stim}_{datetime}".format(src=data_source, stim=stim_select,
-                                                                                  datetime=self.datetime)
+                                                                         datetime=self.datetime)
 
-            #Create and open a new file to record the results of the testing.
+            # Create and open a new file to record the results of the testing.
             path = "ClassifierTesterResults/{filename}.txt".format(filename=filename)
             self.result_file = open(path, "w+")
             print("Generated new file on path '{path}'".format(path=path))
@@ -174,16 +185,21 @@ class ClassifierTester:
             self.result_file = open(file, "w")
             print("File in path '{path}' opened.".format(path=file))
 
-        #Finally, perform the gridsearch method to optimise parameters for the classifiers.
-        #For this, we use 20% of the subject pool selected randomly.
+        # Finally, perform the gridsearch method to optimise parameters for the classifiers.
+        # For this, we use 20% of the subject pool selected randomly.
         if gridsearch is not None:
             print("Performing Gridsearch on compatible pipelines to find optimal parameters...")
             if gridsearch >= 1 or gridsearch < 0:
                 raise Exception("Error: 'gridsearch' must be a value between 0 and 1, or None")
             pool_size = round(len(self.sub_data_list) * gridsearch)
             self.__gridsearch_params(pool_size=pool_size)
+        else:
+            #Without a gridsearch, we just fill the class dictionary with the classifiers set to default.
+            pipelines = self.__generate_pipelines()
+            for pipe in pipelines:
+                self.class_dict[pipe[0]] = pipe[1]
 
-        #Summarise the settings here into the results file.
+        # Summarise the settings here into the results file.
         self.result_file.write("Results for ClassifierTester Class on dataset '{data}'\n".format(data=data_source))
         self.result_file.write("Date/Time: {datetime}\n".format(datetime=self.datetime))
         self.result_file.write("Settings:\n")
@@ -208,10 +224,10 @@ class ClassifierTester:
     ##------------------------------------------------------------------------------------------------------------------
 
     def __gridsearch_params(self, pool_size):
-        #Generate the dictionary.
-        self.grid_dict = {}
+        # Generate the dictionary.
+        self.class_dict = {}
 
-        #Form the data randomly.
+        # Form the data randomly.
         sub_pool = list(range(0, len(self.sub_data_list)))
         random.shuffle(sub_pool)
         val = sub_pool.pop()
@@ -222,23 +238,30 @@ class ClassifierTester:
             data = np.concatenate((data, self.sub_data_list[val][0]),
                                   axis=0)
             labels = np.concatenate((labels, self.sub_data_list[val][1]),
-                                  axis=0)
+                                    axis=0)
 
-        #Generate the classifiers to test.
+        # Generate the classifiers to test.
         pipelines = self.__generate_pipelines()
 
-        #Perform a gridsearch for each.
+        # Perform a gridsearch for each.
         for pipe in pipelines:
-            params = self.__perform_gridsearch(pipe[1], pipe[2], data, labels, n_jobs=2, cross_val=5)
+            print("\nPerforming gridsearch on pipeline: {pipe}".format(pipe=pipe[0]))
+            grid = self.__perform_gridsearch(pipe[1], pipe[2], data, labels, n_jobs=2, cross_val=5)
 
-            #Add the parameters to the dictionary using the name as a key.
-            self.grid_dict[pipe[0]] = params
+            # Add the best estimator to the dictionary using the name as a key.
+            self.class_dict[pipe[0]] = grid.best_estimator_
         return
 
     def __generate_pipelines(self):
-        #The method will return a tuple of a name, pipeline and the gridsearch parameters.
-        #i.e. format is ("name", pipeline, paramers_dict)
-        pipelines = []
+        # The method will return a tuple of a name, pipeline and the gridsearch parameters.
+        # i.e. format is ("name", pipeline, paramers_dict)
+        pipelines = [self.__csp_knn(),
+                     self.__csp_svm(),
+                     self.__csp_lda(),
+                     self.__mdm(),
+                     self.__ts_lr(),
+                     self.__covcsp_lda(),
+                     self.__covcsp_ts_lr()]
         return pipelines
 
     def __perform_gridsearch(self, classifier, parameters, data, labels, n_jobs, verbose=0, cross_val=3):
@@ -257,13 +280,17 @@ class ClassifierTester:
         best_parameters = grid_search.best_estimator_.get_params()
         for param_name in sorted(parameters.keys()):
             print("\t%s: %r" % (param_name, best_parameters[param_name]))
-        return best_parameters
+        return grid_search
 
     ##------------------------------------------------------------------------------------------------------------------
     ##Sk-learn Classifiers
     ##------------------------------------------------------------------------------------------------------------------
 
-    def __csp_lda(self, max_csp_components=20):
+    # Constructed from sources:
+    #   https://mne.tools/dev/auto_examples/decoding/decoding_csp_eeg.html
+    #   https://scikit-learn.org/stable/supervised_learning.html
+
+    def __csp_lda(self, max_csp_components=10):
         print("Generating PCA-LDA classifier pipeline...")
         # Assemble classifiers
         lda = LinearDiscriminantAnalysis()
@@ -279,7 +306,7 @@ class ClassifierTester:
         }
         return ("CSP-LDA", clf, parameters)
 
-    def __csp_svm(self, n_logspace=10, max_csp_components=20):
+    def __csp_svm(self, n_logspace=10, max_csp_components=10):
         print("Generating CSP-SVM classifier pipeline...")
         # If our function parameters are invalid, set them right.
         if max_csp_components < 2:  # Components cannot be less than two.
@@ -303,7 +330,7 @@ class ClassifierTester:
         }
         return ("CSP-SVM", clf, parameters)
 
-    def __csp_knn(self, max_n_neighbors=4, max_csp_components=20):
+    def __csp_knn(self, max_n_neighbors=4, max_csp_components=10):
         print("Generating CSP-KNN classifier pipeline...")
         # If our function parameters are invalid, set them right.
         if max_csp_components < 2:  # Components cannot be less than two.
@@ -328,85 +355,97 @@ class ClassifierTester:
         }
         return ("CSP-KNN", clf, parameters)
 
-    def __pca_lda(self, pca_n_components=32):
-        print("Generating PCA-LDA classifier pipeline...")
-        # If our function parameters are invalid, set them right.
-        if pca_n_components < 2:  # -1 means all cores, greater than four may lead to issues.
-            print("Parameter 'pca_n_components' is below 2, setting to default.")
-            pca_n_components = 32
-        # Assemble classifiers
-        vect = Vectorizer()  # Sklearn requires 2d arrays, so we vectorise them.
-        scl = StandardScaler()  # PCA requires standardised data.
-        pca = PCA(n_components=pca_n_components)  # This reduces the dimensionality of the data.
-        lda = LinearDiscriminantAnalysis()  # This classifies it all.
-        # create the pipeline
-        clf = Pipeline([('VECT', vect), ('SCL', scl), ('PCA', pca), ('LDA', lda)])
-        # Form the parameter dictionary
-        parameters = {
-            'LDA__solver': ('svd', 'lsqr', 'eigen'),
-            'PCA__whiten': (True, False)
-        }
-        return ("PCA-LDA", clf, parameters)
-
-    def __pca_svm(self, n_logspace=10, pca_n_components=32):
-        print("Generating PCA-SVM classifier pipeline...")
-        if n_logspace < 2:  # n_neighbors needs to be positive.
-            print("Parameter 'n_logspace' is below 2, setting to default.")
-            n_logspace = 10
-        if pca_n_components < 2:  # -1 means all cores, greater than four may lead to issues.
-            print("Parameter 'pca_n_components' is below 2, setting to default.")
-            pca_n_components = 32
-        # Assemble classifiers
-        vect = Vectorizer()  # Sklearn requires 2d arrays, so we vectorise them.
-        scl = StandardScaler()  # PCA requires standardised data.
-        pca = PCA(n_components=pca_n_components)  # This reduces the dimensionality of the data.
-        svc = svm.SVC()  # This classifies it all.
-        # create the pipeline
-        clf = Pipeline([('VECT', vect), ('SCL', scl), ('PCA', pca), ('SVC', svc)])
-        # Form the parameter dictionary, ('KBEST', kbest)
-        parameters = {
-            'SVC__C': np.logspace(start=1, stop=10, num=n_logspace, base=10).tolist(),
-            # 'SVC__kernel': ('linear', 'poly', 'rbf', 'sigmoid'),
-            'PCA__whiten': (True, False)
-        }
-
-        return ("PCA-SVM", clf, parameters)
-
-    def __pca_knn(self, max_n_neighbors=4, pca_n_components=32):
-        print("Generating PCA-KNN classifier pipeline...")
-        # If our function parameters are invalid, set them right.
-        if max_n_neighbors < 2:  # n_neighbors needs to be positive.
-            print("Parameter 'n_neighbors' is below 2, setting to default.")
-            max_n_neighbors = 4
-        if pca_n_components < 2:  # -1 means all cores, greater than four may lead to issues.
-            print("Parameter 'pca_n_components' is below 2, setting to default.")
-            pca_n_components = 32
-        # Assemble classifiers
-        vect = Vectorizer()  # Sklearn requires 2d arrays, so we vectorise them.
-        scl = StandardScaler()  # PCA requires standardised data.
-        pca = PCA(n_components=pca_n_components)  # This reduces the dimensionality of the data.
-        knn = KNeighborsClassifier()  # This classifies it all.
-        # create the pipeline
-        clf = Pipeline([('VECT', vect), ('SCL', scl), ('PCA', pca), ('KNN', knn)])
-        # Form the parameter dictionary, ('KBEST', kbest)
-        parameters = {
-            'KNN__n_neighbors': range(2, max_n_neighbors + 1),
-            'KNN__weights': ('uniform', 'distance'),
-            'KNN__algorithm': ('ball_tree', 'kd_tree', 'brute'),
-            'PCA__whiten': (True, False)
-        }
-        return ("PCA-KNN", clf, parameters)
-
     ##------------------------------------------------------------------------------------------------------------------
     ##PyRiemann Classifiers
     ##------------------------------------------------------------------------------------------------------------------
+
+    # Constructed from sources:
+    #   https://pyriemann.readthedocs.io/en/latest/api.html
+    #   https://github.com/NeuroTechX/moabb/tree/master/pipelines
+    #   https://neurotechx.github.io/eeg-notebooks/auto_examples/visual_ssvep/02r__ssvep_decoding.html
+
+    def __mdm(self):
+        print("Generating MDM classifier pipeline...")
+        # Assemble classifier
+        cov = Covariances()
+        mdm = MDM()
+        # create the pipeline
+        clf = Pipeline([('COV', cov), ('MDM', mdm)])
+        # Form the parameter dictionary
+        parameters = {
+            'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
+            'MDM__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
+        }
+        return ("MDM", clf, parameters)
+
+    def __ts_lr(self):
+        print("Generating TS-LR classifier pipeline...")
+        cov = Covariances()
+        ts = TangentSpace()
+        lr = LogisticRegression()
+        clf = Pipeline([('COV', cov), ('TS', ts), ('LR', lr)])
+        # Form the parameter dictionary
+        parameters = {
+            'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
+            'TS__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
+        }
+        return ("TS-LR", clf, parameters)
+
+    def __covcsp_lda(self, max_n_filters=10):
+        print("Generating CovCSP-LDA classifier pipeline...")
+        # If our function parameters are invalid, set them right.
+        if max_n_filters < 2:  # Components cannot be less than two.
+            print("Parameter 'max_n_filters' is below 2, setting to default.")
+            max_n_filters = 10
+        cov = Covariances()
+        csp = CovCSP()
+        lda = LinearDiscriminantAnalysis()
+        clf = Pipeline([('COV', cov), ('CSP', csp), ('LDA', lda)])
+        # Form the parameter dictionary
+        parameters = {
+            'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
+            'CSP__nfilter': range(2, max_n_filters),
+            'CSP__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'),
+            'LDA__solver': ('svd', 'lsqr', 'eigen')
+        }
+        return ("CovCSP-LDA", clf, parameters)
+
+    def __covcsp_ts_lr(self, max_n_filters=10):
+        print("Generating CovCSP-TS-LR classifier pipeline...")
+        # If our function parameters are invalid, set them right.
+        if max_n_filters < 2:  # Components cannot be less than two.
+            print("Parameter 'max_n_filters' is below 2, setting to default.")
+            max_n_filters = 10
+        cov = Covariances()
+        csp = CovCSP()
+        ts = TangentSpace()
+        lr = LogisticRegression()
+        clf = Pipeline([('COV', cov), ('CSP', csp), ('TS', ts), ('LR', lr)])
+        # Form the parameter dictionary
+        parameters = {
+            'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
+            'CSP__nfilter': range(2, max_n_filters),
+            'CSP__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'),
+            'TS__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
+        }
+        return ("CovCSP-TS-LR", clf, parameters)
+
+    ##------------------------------------------------------------------------------------------------------------------
+    ##Filter-Bank and MOABB Classifiers
+    ##------------------------------------------------------------------------------------------------------------------
+
+    #For filter bank, we need the data in the form (trial, channel, times, filter).
 
 
     ##------------------------------------------------------------------------------------------------------------------
     ##Neural Networks
     ##------------------------------------------------------------------------------------------------------------------
 
-
     ##------------------------------------------------------------------------------------------------------------------
     ##Public Methods
     ##------------------------------------------------------------------------------------------------------------------
+
+print(mne.get_config('MNE_LOGGING_LEVEL'))
+mne.set_config('MNE_LOGGING_LEVEL', 'warning')
+print(mne.get_config('MNE_LOGGING_LEVEL'))
+test = ClassifierTester(subj_range=[1, 10], gridsearch=0.2)

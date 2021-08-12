@@ -34,7 +34,7 @@ def __get_runs(test_type):
 def get_single_mi(subject, test_type):
     # First, we check which set is chosen.
     run = __get_runs(test_type)
-
+    subject = "{:03d}".format(subject)
     # Now, we grab the data to return
     file = ["EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
             + subject + "\\S" + subject + "R" + "{:02d}".format(run) + ".edf",

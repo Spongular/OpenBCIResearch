@@ -33,7 +33,7 @@ raw = gen_tools.preprocess_highpass(raw, min=4., fir_design='firwin')
 
 #Epoch our data.
 tmin = 0.
-tmax = 3.
+tmax = 4.
 #(C3, C4 and Cz got 70% or so.)
 data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=["Fp1", "Fp2", "O1", "O2"], scale=1000)
 print(epochs.ch_names)
