@@ -216,3 +216,7 @@ def f1_score(y_true, y_pred):
     # Calculate f1_score
     f1_score = 2 * (precision * recall) / (precision + recall)
     return f1_score
+
+
+def slice_data(data, labels):
+    return data, labels
