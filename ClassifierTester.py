@@ -112,16 +112,15 @@ class ClassifierTester:
         ch_list         :   A list of channels to be included when epoching data. By default, and empty list will result
                             in the inclusion of all EEG channels. Uses standard 10-20 channel notations, i.e. ['Fp1', 'Cz']
 
-        class_list      :   A list determining which sets of classifiers to include. Options are 'sk' = sklearn,
-                            'pr' = pyriemann and 'nn' = neural networks. All are selected by default.
-
         slice_count     :   A number representing how many fragments that an epoch should be 'sliced' into using
                             non-overlapping sliding windows.
+
+        callback        :   A boolean determining whether neural networks will make use of callbacks to record weights
+                            or network form during training for later use.
     """
 
     def __init__(self, data_source='physionet', type='movement', stim_select='lr', subj_range=None, result_metrics=["acc"],
-                 gridsearch=None, file=None, filter_bounds=[6., 30.], tmin=0., tmax=4., ch_list=[],
-                 class_select=['sk', 'pr', 'nn'], slice_count=1):
+                 gridsearch=None, file=None, filter_bounds=[6., 30.], tmin=0., tmax=4., ch_list=[], slice_count=1, callback=False):
 
         mne.set_log_level('warning')
 
@@ -133,9 +132,9 @@ class ClassifierTester:
 
         #Misc attributes
         self.sub_data_list = []
-        self.class_select = class_select
         self.sk_test = False
         self.nn_test = False
+        self.callback = callback
 
         # First, determine where we get our data.
         if data_source == 'physionet':
@@ -243,22 +242,27 @@ class ClassifierTester:
 
 
         # Summarise the settings here into the results file.
-        self.result_file.write("Results for ClassifierTester Class on dataset '{data}'\n".format(data=data_source))
-        self.result_file.write("Date/Time: {datetime}\n".format(datetime=self.datetime))
-        self.result_file.write("Settings:\n")
-        self.result_file.write("    Type = {type1} - {type2}\n".format(type1=type, type2=stim_select))
+        self.__print("Results for ClassifierTester Class on dataset '{data}'\n".format(data=data_source))
+        self.__print("Date/Time: {datetime}\n".format(datetime=self.datetime))
+        self.__print("Settings:\n")
+        self.__print("    Type = {type1} - {type2}\n".format(type1=type, type2=stim_select))
         if subj_range is None:
-            self.result_file.write("    Subject Range = All\n")
+            self.__print("    Subject Range = All\n")
         else:
-            self.result_file.write("    Subject Range = {sub_r}\n".format(sub_r=subj_range))
-        self.result_file.write("    Result Format = {format}, Gridsearch = {grd}\n".format(format=result_format,
-                                                                                           grd=gridsearch))
-        self.result_file.write("    Filter Bounds = {flt}\n".format(flt=filter_bounds))
-        self.result_file.write("    tmin = {min}, tmax = {max}\n".format(min=tmin, max=tmax))
+            self.__print("    Subject Range = {sub_r}\n".format(sub_r=subj_range))
+        self.__print("    Result Metrics = {format}\n".format(format=result_metrics))
+        self.__print("    Gridsearch = {grd}".format(grd=gridsearch))
+        self.__print("    Filter Bounds = {flt}\n".format(flt=filter_bounds))
+        self.__print("    tmin = {min}, tmax = {max}\n".format(min=tmin, max=tmax))
         if ch_list == []:
-            self.result_file.write("    Channels = All\n")
+            self.__print("    Channels = All\n")
         else:
-            self.result_file.write("    Channels = {chs}\n".format(chs=ch_list))
+            self.__print("    Channels = {chs}\n".format(chs=ch_list))
+        return
+
+    def __del__(self):
+        print("Closing and saving file: {file}".format(file=self.result_file.name))
+        self.result_file.close()
         return
 
     ##------------------------------------------------------------------------------------------------------------------
@@ -318,27 +322,64 @@ class ClassifierTester:
 
     def __generate_nueral_networks(self, data_shape):
         #This method will return a tuple of name, compiled NN model and callbacks
-        #i.e. format is ("name", model, callbacks)
+        #i.e. format is ("name", model, fit_details)
         models = [self.__eegnet(data_shape=data_shape),
                   self.__fusion_eegnet(data_shape=data_shape)]
         return models
 
     def __generate_pipelines(self):
         # The method will return a tuple of a name, pipeline and the gridsearch parameters.
-        # i.e. format is ("name", pipeline, paramers_dict)
+        # i.e. format is ("name", pipeline, params_dict)
         pipelines = [self.__csp_knn(),
                      self.__csp_svm(),
                      self.__csp_lda(),
                      self.__mdm(),
                      self.__ts_lr(),
                      self.__covcsp_lda(),
-                     self.__covcsp_ts_lr()]
+                     self.__covcsp_lr()]
         return pipelines
 
     def initialise_sklearn_classifiers(self):
+        #This will create sklearn-based classifiers with default parameters
+        #that are determined by examples provided in the documentation for
+        #MNE and PyRiemann libraries.
+        pipelines = [self.__csp_knn(),
+                     self.__csp_svm(),
+                     self.__csp_lda(),
+                     self.__mdm(),
+                     self.__ts_lr(),
+                     self.__covcsp_lda(),
+                     self.__covcsp_lr()]
+        for pipe in pipelines:
+            self.sk_dict[pipe[0]] = pipe[1]
+        return self.sk_dict
+
+
+    def initialise_neural_networks(self, d_shape=None, d_fourth_axis=1):
+        #This will construct compiled models set to defaults as determined
+        #by the EEGNet and Fusion EEGNet documentation.
+        if d_shape is None:
+            data_shape = self.sub_data_list[0][0].shape + (d_fourth_axis,)
+        else:
+            data_shape = d_shape
+        models = [self.__eegnet(data_shape=data_shape),
+                  self.__fusion_eegnet(data_shape=data_shape)]
+        for model in models:
+            self.nn_dict[model[0]] = (model[1], model[2])
+        return self.nn_dict
+
+    def __print_average_results(self, results):
+        #Here we get the average for each metric and print it.
+        for name in results.keys():
+            self.__print("Classifier: {n}\n".format(n=name))
+            for metric in results[name].keys():
+                self.__print("{m} = {r}\n".format(m=metric, r=results[name][metric]))
+            self.__print("\n")
         return
 
-    def initialise_neural_networks(self):
+    def __print(self, string):
+        print(string)
+        self.result_file.write(string)
         return
 
     ##------------------------------------------------------------------------------------------------------------------
@@ -441,7 +482,7 @@ class ClassifierTester:
         print("Generating TS-LR classifier pipeline...")
         cov = Covariances()
         ts = TangentSpace()
-        lr = LogisticRegression()
+        lr = LogisticRegression(max_iter=1000)
         clf = Pipeline([('COV', cov), ('TS', ts), ('LR', lr)])
         # Form the parameter dictionary
         parameters = {
@@ -469,25 +510,23 @@ class ClassifierTester:
         }
         return ("CovCSP-LDA", clf, parameters)
 
-    def __covcsp_ts_lr(self, max_n_filters=10):
-        print("Generating CovCSP-TS-LR classifier pipeline...")
+    def __covcsp_lr(self, max_n_filters=10):
+        print("Generating CovCSP-LR classifier pipeline...")
         # If our function parameters are invalid, set them right.
         if max_n_filters < 2:  # Components cannot be less than two.
             print("Parameter 'max_n_filters' is below 2, setting to default.")
             max_n_filters = 10
         cov = Covariances()
         csp = CovCSP()
-        ts = TangentSpace()
-        lr = LogisticRegression()
-        clf = Pipeline([('COV', cov), ('CSP', csp), ('TS', ts), ('LR', lr)])
+        lr = LogisticRegression(max_iter=1000)
+        clf = Pipeline([('COV', cov), ('CSP', csp), ('LR', lr)])
         # Form the parameter dictionary
         parameters = {
             'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
             'CSP__nfilter': range(2, max_n_filters),
-            'CSP__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'),
-            'TS__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
+            'CSP__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
         }
-        return ("CovCSP-TS-LR", clf, parameters)
+        return ("CovCSP-LR", clf, parameters)
 
     ##------------------------------------------------------------------------------------------------------------------
     ##Filter-Bank and MOABB Classifiers
@@ -530,14 +569,21 @@ class ClassifierTester:
                                            save_best_only=True)
             callbacks.append(checkpointer)
 
-        return ("eegnet", model, callbacks)
+        #This is the dictionary of details for the fit method.
+        fit_dict = {
+            'batch_size' : 16,
+            'epochs' : 100,
+            'callbacks' : callbacks
+        }
+
+        return ("eegnet", model, fit_dict)
 
     #Fusion Convolutional Neural Network for Cross-Subject EEG Motor Imagery Classification
     #Available at: https://research.tees.ac.uk/en/publications/fusion-convolutional-neural-network-for-cross-subject-eeg-motor-i
     def __fusion_eegnet(self, data_shape, dropout=0.5, chan=4, n_classes=2, lr_scheduler=True, check_p=False):
         model = None
-        callbacks = None
-        return ("fusion_eegnet", model, callbacks)
+        fit_dict = None
+        return ("fusion_eegnet", model, fit_dict)
 
     ##------------------------------------------------------------------------------------------------------------------
     ##Testing Methods
@@ -550,7 +596,7 @@ class ClassifierTester:
 
     #Trains and tests each classifier on randomised batches of subjects.
     def run_batch_test(self, batch_size, n_times, sk_test=True, nn_test=True, sk_select=None, nn_select=None,
-                       train_test_split=0.2, split_subject=False, cross_val_times=5, print_file=True):
+                       test_split=0.2, split_subject=False, cross_val_times=5):
         #Check parameters.
         if n_times < 1:
             raise Exception("Error: Attribute 'n_times' must be greater than or equal to 1.")
@@ -565,16 +611,37 @@ class ClassifierTester:
 
         #See if our classifiers are already generated, and if not, do so.
         if not self.sk_class_loaded:
-            blah = 'blah'
+            self.initialise_sklearn_classifiers()
         if not self.nn_class_loaded:
-            blah = 'blah'
+            self.initialise_neural_networks()
 
+        #Write our initial text into results.
+        self.__print("--BATCH TEST--\n")
+        self.__print("Parameters:\n")
+        self.__print("    batch_size = {batch}\n".format(batch=batch_size))
+        self.__print("    n_times = {n}\n".format(n=n_times))
+        self.__print("    sk_test = {sk}, sk_select = {sks}\n".format(sk=sk_test, sks=sk_select))
+        self.__print("    nn_test = {nn}, nn_select = {nns}\n".format(nn=nn_test, nns=nn_select))
+        self.__print("    train_test_split = {tts}, split_subjects = {ss}\n".format(tts=train_test_split,
+                                                                                              ss=split_subject))
+        self.__print("    cross_val_times = {cvt}\n".format(cvt=cross_val_times))
+
+        results = []
         for x in range(0, n_times):
             if split_subject:
-                self.__split_subject_train_test_classifiers(batch_size=batch_size, cross_val_times=cross_val_times)
+                results.append(self.__split_subject_train_test_classifiers(batch_size=batch_size,
+                                                                           cross_val_times=cross_val_times,
+                                                                           test_split=test_split))
             else:
-                self.__train_test_classifiers(batch_size=batch_size, cross_val_times=cross_val_times)
+                results.append(self.__train_test_classifiers(batch_size=batch_size, cross_val_times=cross_val_times,
+                               test_split=test_split))
 
+        count = 1
+        for result in results:
+            self.__print("--Batch No. {n}: \n".format(n=count))
+            self.__print_average_results(result)
+            self.__print("\n")
+            count = count + 1
         return
 
     #Trains and tests each classifier on incrementally growing randomised batches of subjects.
@@ -588,7 +655,28 @@ class ClassifierTester:
     ##------------------------------------------------------------------------------------------------------------------
 
     def __train(self, data, labels):
+        if self.sk_test:
+            for name, classifier in self.sk_dict.items():
+                if self.sk_select is None or name in self.sk_select:
+                    classifier.fit(data, labels)
+        if self.nn_test:
+            #Reshape the data, split into train/validation sets and one-hot encode the labels.
+            data = gen_tools.reshape_3to4(data)
+            T_data, t_labels, V_data, v_labels = train_test_split(data, labels, test_size=0.2, shuffle=True)
+            t_labels = to_categorical(t_labels, 2)
+            v_labels = to_categorical(v_labels, 2)
 
+            #For each NN, split into
+            for name, network in self.nn_dict.items():
+                if self.nn_select is None or name in self.nn_select:
+                    if self.callbacks:
+                        network[0].fit(T_data, t_labels, batch_size=network[1]['batch_size'],
+                                   epochs=network[1]['epochs'], callbacks=network[1]['callbacks'],
+                                       validation_data=(V_data, v_labels), class_weights = {0:1, 1:1})
+                    else:
+                        network[0].fit(T_data, t_labels, batch_size=network[1]['batch_size'],
+                                       epochs=network[1]['epochs'], validation_data=(V_data, v_labels),
+                                       class_weights = {0:1, 1:1})
         return
 
     def __test(self, data, labels):
@@ -600,22 +688,24 @@ class ClassifierTester:
         #Perform single trial test for sk learn format models.
         if self.sk_test:
             for name, classifier in self.sk_dict.items():
-                #Make the predictions.
-                preds = classifier.predict(data)
-                results[name] = {}
+                if self.sk_select is None or name in self.sk_select: #Thank the lord for short-circuit evaluation...
+                    #Make the predictions.
+                    preds = classifier.predict(data)
+                    results[name] = {}
 
-                #Evaluate based on metrics.
-                for metric in self.result_metrics.keys():
-                    if metric == 'Accuracy':
-                        results[name][metric] = accuracy_score(labels, preds)
-                    elif metric == 'Recall':
-                        results[name][metric] = recall_score(labels, preds)
-                    elif metric == 'Precision':
-                        results[name][metric] = precision_score(labels, preds)
-                    elif metric == 'F1_Score':
-                        results[name][metric] = f1_score(labels, preds)
-                    elif metric == 'ROC_AUC':
-                        results[name][metric] = roc_auc_score(labels, preds)
+                    prefix = 'test_'
+                    #Evaluate based on metrics.
+                    for metric in self.result_metrics.keys():
+                        if metric == 'Accuracy':
+                            results[name][prefix + metric] = accuracy_score(labels, preds)
+                        elif metric == 'Recall':
+                            results[name][prefix + metric] = recall_score(labels, preds)
+                        elif metric == 'Precision':
+                            results[name][prefix + metric] = precision_score(labels, preds)
+                        elif metric == 'F1_Score':
+                            results[name][prefix + metric] = f1_score(labels, preds)
+                        elif metric == 'ROC_AUC':
+                            results[name][prefix + metric] = roc_auc_score(labels, preds)
 
         #Perform single trial test for neural network models.
         if self.nn_test:
@@ -624,17 +714,19 @@ class ClassifierTester:
 
         return results
 
-    def __stratified_cross_val(self, data, labels, cv=5):
+    def __stratified_cross_val(self, data, labels, cv=5, test_split=0.2):
         #Initialise the result dictionary.
         #will be in form 'Classifier Name' : 'Cross Validation Results'
         results = {}
 
+        cross_split = ShuffleSplit(n_splits=5, test_size=test_split)
         #perform stratified cross validation for sk learn format models.
         if self.sk_test:
             for name, classifier in self.sk_dict.items():
-                scores = cross_validate(classifier, data, labels, scoring=self.result_metrics,
-                         cv=cv, return_train_score=True)
-                results[name] = scores
+                if self.sk_select is None or name in self.sk_select: #Thank the lord for short-circuit evaluation...
+                    scores = cross_validate(classifier, data, labels, scoring=self.result_metrics,
+                         cv=cross_split, return_train_score=True)
+                    results[name] = scores
 
         # Perform stratified cross validation for neural network models.
         if self.nn_test:
@@ -643,7 +735,7 @@ class ClassifierTester:
 
         return results
 
-    def __train_test_classifiers(self, batch_size, cross_val_times):
+    def __train_test_classifiers(self, batch_size, cross_val_times, test_split):
         # Create our randomised set of subjects
         subjects = list(range(0, len(self.sub_data_list)))
         random.shuffle(subjects)
@@ -664,10 +756,10 @@ class ClassifierTester:
         data, labels = shuffle(data, labels, random_state=1)
 
         #Perform the cross validation.
-        self.__strat_cross_val(data, labels, cross_val_times)
-        return
+        results = self.__stratified_cross_val(data, labels, cross_val_times, test_split)
+        return results
 
-    def __split_subject_train_test_classifiers(self, batch_size, cross_val_times):
+    def __split_subject_train_test_classifiers(self, batch_size, cross_val_times, test_split):
         # Create our randomised set of subjects
         subjects = list(range(0, len(self.sub_data_list)))
         random.shuffle(subjects)
@@ -678,15 +770,15 @@ class ClassifierTester:
         for x in range(0, cross_val_times):
             # Get the nearest whole number for the train test split.
             # i.e. if there are 10 subjects, 0.2 train_test_split, then we get 2 subjects for testing.
-            test_count = round(len(subjects) * train_test_split)
+            test_count = round(len(subjects) * test_split)
             test_indices = []
             for y in range(0, test_count):
-                if cur_index + y < len(subjects):
-                    test_indices.append(cur_index + y)
+                if cur_index < len(subjects):
+                    test_indices.append(subjects[cur_index])
                     cur_index = cur_index + 1
                 else:
-                    test_indices.append(0)
-                    cur_index = 0
+                    test_indices.append(subjects[0])
+                    cur_index = 1
 
             #Grab our test data by using the test indices.
             cur_sub = test_indices[0]
@@ -710,7 +802,7 @@ class ClassifierTester:
             cur_sub = train_indices.pop()
             data_train = self.sub_data_list[cur_sub][0]
             labels_train = self.sub_data_list[cur_sub][1]
-            while len(subjects) > 0:
+            while len(subjects) > 0 and len(train_indices) > 0:
                 cur_sub = train_indices.pop()
                 data_train = np.concatenate(
                     (data_train, self.sub_data_list[cur_sub][0]),
@@ -725,10 +817,27 @@ class ClassifierTester:
 
             self.__train(data_train, labels_train)
             results.append(self.__test(data_test, labels_test))
-        return results
+        #Now, we need to change results from the form of a list(dict(dict()))
+        #to the form of dict(dict()) to match the cross validate function and make it
+        #easier to read.
+        final_results = results[0]
+        count = 1
+        #Here, we iterate through the key pairs, adding the values and finding the average.
+        for name, metrics in final_results.items():
+            for key in metrics.keys():
+                while count < len(results):
+                    final_results[name][key] = final_results[name][key] + results[count][name][key]
+                    count = count + 1
+                final_results[name][key] = final_results[name][key] / count
+                count = 1
+        return final_results
+
 
 
 print(mne.get_config('MNE_LOGGING_LEVEL'))
 mne.set_config('MNE_LOGGING_LEVEL', 'warning')
 print(mne.get_config('MNE_LOGGING_LEVEL'))
-test = ClassifierTester(subj_range=[1, 10], gridsearch=0.2)
+test = ClassifierTester(subj_range=[1, 50], gridsearch=None)
+test.initialise_sklearn_classifiers()
+#test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False)
+test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False, split_subject=True)
