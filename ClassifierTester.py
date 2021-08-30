@@ -30,6 +30,8 @@ from matplotlib import pyplot as plt
 from datetime import datetime
 from time import time
 import random
+import sys
+from math import floor
 
 # mne import
 import mne
@@ -175,7 +177,7 @@ class ClassifierTester:
         if slice_count > 1:
             for ind, sub in enumerate(self.sub_data_list):
                 #for each subject, we perform the slice on their data.
-                self.sub_data_list[ind] = gen_tools.slice_data(sub[0], sub[1])
+                self.sub_data_list[ind] = gen_tools.slice_data(sub[0], sub[1], slice_count)
 
         # Set the metrics
         self.result_metrics = {}
@@ -837,7 +839,8 @@ class ClassifierTester:
 print(mne.get_config('MNE_LOGGING_LEVEL'))
 mne.set_config('MNE_LOGGING_LEVEL', 'warning')
 print(mne.get_config('MNE_LOGGING_LEVEL'))
-test = ClassifierTester(subj_range=[1, 50], gridsearch=None)
+test = ClassifierTester(subj_range=[1, 50], gridsearch=None, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'])
 test.initialise_sklearn_classifiers()
-#test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False)
+test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False)
 test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False, split_subject=True)
+

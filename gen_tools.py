@@ -2,6 +2,7 @@
 
 import mne
 import numpy as np
+from math import floor
 import matplotlib.pyplot as plt
 from mne import pick_types, Epochs, events_from_annotations, concatenate_raws, find_events
 from mne.channels import make_standard_montage
@@ -218,5 +219,27 @@ def f1_score(y_true, y_pred):
     return f1_score
 
 
-def slice_data(data, labels):
-    return data, labels
+def slice_data(data, labels, slice=8):
+    #First, we find the slice size.
+    #We round down, such that we don't go out of bounds on that data array.
+    #Losing a single data point is not a big deal.
+    slice_size = floor(data.shape[2] / slice)
+    count = 0
+    cur_ind = slice_size
+    prev_ind = 0
+    slices = []
+    #Now, we fill our list with array slices.
+    while count < slice:
+        slices.append(np.array(data[:, :, prev_ind:cur_ind]))
+
+    #Now, we pop our first slice from the list, create our new labels array,
+    #and for each remaining slice we concatenate it to the first, and concatenate
+    #a copy of the labels onto the new label set.
+    #This way, we end up with our slices and labels in the correct order.
+    final_data = slices.pop()
+    final_labels = labels
+    for slice in slices:
+        final_data = np.concatenate((final_data, slice), axis=0)
+        final_labels = np.concatenate((final_labels, labels), axis=0)
+
+    return final_data, final_labels
