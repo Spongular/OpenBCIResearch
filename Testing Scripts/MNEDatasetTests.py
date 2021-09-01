@@ -10,7 +10,7 @@ import mne
 from autoreject import AutoReject
 
 #Set the path for our file. In this case, it's the first trial.
-file = "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S001\\S001R04.edf"
+file = "../EEGRecordings/PhysioNetMMDB/eegmmidb-1.0.0.physionet.org/S001/S001R04.edf"
 
 mne.set_log_level("WARNING")
 

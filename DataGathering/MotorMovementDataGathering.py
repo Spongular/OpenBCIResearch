@@ -16,4 +16,4 @@ raw = stimulator.run_stim(return_raw=True)
 
 raw.plot(block=True)
 
-stimulator.save_data(file_name='subject1-10_06_2021-mm-lr-004', type='movement')
+stimulator.save_data(file_name='subject1-10_06_2021-mm-lr-005', type='movement')

@@ -9,7 +9,7 @@ import numpy as np
 from keras.models import Sequential, clone_model, Model
 from keras.layers import Dense, Dropout, Input, Activation, SpatialDropout2D, DepthwiseConv2D, AveragePooling2D
 from keras.layers import Flatten, Conv2D, MaxPooling2D, LSTM, SeparableConv2D
-from keras.layers import BatchNormalization, Conv3D, MaxPooling3D, Permute
+from keras.layers import BatchNormalization, Conv3D, MaxPooling3D, Permute, concatenate
 from keras.utils import to_categorical
 from keras.optimizers import Adam
 from keras.constraints import max_norm
@@ -376,3 +376,115 @@ def DeepConvNet(nb_classes, Chans=64, Samples=256,
     softmax = Activation('softmax')(dense)
 
     return Model(inputs=input_main, outputs=softmax)
+
+#This is based on a combination of the work found at: https://github.com/rootskar/EEGMotorImagery/blob/master/EEGModels.py
+#And the slightly modified EEGNet implementation found above.
+#This is just changed up to match the proper format for input data, and to have the kernels match the model
+#in the paper by default, not the model in the provided git link.
+#That model had: conv_kernels=(8, 16, 32) and sep_conv_kernels=(16, 32, 64)
+def fusionEEGNet(n_classes, chans=64, samples=128, third_axis=1, l_rate=0.01,
+                 dropout_rate=0.5, norm_rate=0.25, dropout_type='Dropout',
+                 batch_norm=True, conv_kernels=(4, 8, 16), sep_conv_kernels=(16, 16, 16)):
+
+    #Determine the dropout type.
+    #There's no reason not to provide this option just like the EEGNet method.
+    if dropout_type == 'SpatialDropout2D':
+        dropout_type = SpatialDropout2D
+    elif dropout_type == 'Dropout':
+        dropout_type = Dropout
+    else:
+        raise ValueError('dropoutType must be one of SpatialDropout2D '
+                         'or Dropout, passed as a string.')
+
+    #This input block will feed into all 3 'branches' of the classifier.
+    input1 = Input(shape=(chans, samples, third_axis))
+
+    #Branch 1
+    B1 = Conv2D(conv_kernels[0], (1, 64), padding='same',
+                  input_shape=(chans, samples, third_axis),
+                  use_bias=False)(input1)
+    if batch_norm:
+        B1 = BatchNormalization()(B1)
+    B1 = DepthwiseConv2D((chans, 1), use_bias=False,
+                             depth_multiplier=2,
+                             depthwise_constraint=max_norm(1.))(B1)
+    if batch_norm:
+        B1 = BatchNormalization()(B1)
+    B1 = Activation('elu')(B1)
+    B1 = AveragePooling2D((1, 4))(B1)
+    if dropout_rate > 0:
+        B1 = dropout_type(dropout_rate)(B1)
+    B1 = SeparableConv2D(sep_conv_kernels[0], (1, 8),
+                             use_bias=False, padding='same')(B1)
+    if batch_norm:
+        B1 = BatchNormalization()(B1)
+    B1 = Activation('elu')(B1)
+    B1 = AveragePooling2D((1, 8))(B1)
+    if dropout_rate > 0:
+        B1 = dropout_type(dropout_rate)(B1)
+    B1 = Flatten(name='Flatten1')(B1)
+
+    #Branch 2
+    B2 = Conv2D(conv_kernels[1], (1, 128), padding='same',
+                  input_shape=(chans, samples, third_axis),
+                  use_bias=False)(input1)
+    if batch_norm:
+        B2 = BatchNormalization()(B2)
+    B2 = DepthwiseConv2D((chans, 1), use_bias=False,
+                         depth_multiplier=2,
+                         depthwise_constraint=max_norm(1.))(B2)
+    if batch_norm:
+        B2 = BatchNormalization()(B2)
+    B2 = Activation('elu')(B2)
+    B2 = AveragePooling2D((1, 4))(B2)
+    if dropout_rate > 0:
+        B2 = dropout_type(dropout_rate)(B2)
+    B2 = SeparableConv2D(sep_conv_kernels[1], (1, 16),
+                         use_bias=False, padding='same')(B2)
+    if batch_norm:
+        B2 = BatchNormalization()(B2)
+    B2 = Activation('elu')(B2)
+    B2 = AveragePooling2D((1, 8))(B2)
+    if dropout_rate > 0:
+        B2 = dropout_type(dropout_rate)(B2)
+    B2 = Flatten(name='Flatten2')(B2)
+
+    #Branch 3
+    B3 = Conv2D(conv_kernels[2], (1, 256), padding='same',
+                  input_shape=(chans, samples, third_axis),
+                  use_bias=False)(input1)
+    if batch_norm:
+        B3 = BatchNormalization()(B3)
+    B3 = DepthwiseConv2D((chans, 1), use_bias=False,
+                         depth_multiplier=2,
+                         depthwise_constraint=max_norm(1.))(B3)
+    if batch_norm:
+        B3 = BatchNormalization()(B3)
+    B3 = Activation('elu')(B3)
+    B3 = AveragePooling2D((1, 4))(B3)
+    if dropout_rate > 0:
+        B3 = dropout_type(dropout_rate)(B3)
+    B3 = SeparableConv2D(sep_conv_kernels[2], (1, 32),
+                         use_bias=False, padding='same')(B3)
+    if batch_norm:
+        B3 = BatchNormalization()(B3)
+    B3 = Activation('elu')(B3)
+    B3 = AveragePooling2D((1, 8))(B3)
+    if dropout_rate > 0:
+        B3 = dropout_type(dropout_rate)(B3)
+    B3 = Flatten(name='Flatten3')(B3)
+
+    #Merging
+    merge = concatenate([B1, B2])
+    merge = concatenate([merge, B3])
+
+    #Final Dense Layer / Misc
+    flatten = Flatten(name='Flatten4')(merge)
+    dense = Dense(n_classes, name='Dense',
+                  kernel_constraint=max_norm(norm_rate))(flatten)
+    softmax = Activation('softmax', name='Softmax')(dense)
+
+    model = Model(inputs=input1, outputs=softmax)
+    opt = Adam(lr=l_rate)
+    model.summary()
+    return model, opt

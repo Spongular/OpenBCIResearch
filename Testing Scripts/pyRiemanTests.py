@@ -115,7 +115,7 @@ print(cov_data_train.shape)
 #
 # #-----------------------------------------------------------------------------------------------------------------------
 # #Tangent Space Logistic Regression Classifier
-# clf = TSclassifier()
+clf = TSclassifier()
 # # Use scikit-learn Pipeline with cross_val_score function
 # scores = cross_val_score(clf, cov_data_train, labels, cv=cv, n_jobs=1)
 #
