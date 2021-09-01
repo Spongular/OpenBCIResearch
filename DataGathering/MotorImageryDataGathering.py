@@ -14,6 +14,7 @@ stimulator = LiveBCI.MotorImageryStimulator(stim_time=4, wait_time=6, stim_count
 
 raw = stimulator.run_stim(return_raw=True)
 
+raw.plot_psd()
 raw.plot(block=True)
 
-stimulator.save_data(file_name='subject1-10_06_2021-mi-lr-001', type='imagery')
+stimulator.save_data(file_name='subject1-17_08_2021-mi-lr-004', type='imagery')

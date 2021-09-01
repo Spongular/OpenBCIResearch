@@ -17,8 +17,8 @@ from mne import pick_types, Epochs, events_from_annotations
 from mne import io
 
 #Machine Learning Imports
-from keras.utils import to_categorical
-from keras.models import Model, load_model
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.models import Model, load_model
 from sklearn.utils import shuffle
 
 #PsychoPi EEG Stimulation Imports
@@ -155,8 +155,11 @@ class MotorImageryStimulator:
         if self.eeg_data is None:
             raise Exception("Error: No EEG data has been recorded.")
 
+        #Channel Count is used to determine what data is used.
+        ch_count = len(self.ch_names) - 1
         #Form an MNE Raw object from our data.
         eeg_channels = self.board.get_eeg_channels(self.board.board_id)
+        eeg_channels = eeg_channels[:ch_count]
         eeg_data = self.eeg_data[eeg_channels, :]
         eeg_data = eeg_data / 1000000  # BrainFlow returns uV, convert to V for MNE
         # Add the marker/stim channel to the data.
@@ -164,7 +167,7 @@ class MotorImageryStimulator:
                                   axis=0)
 
         # Creating MNE objects from brainflow data arrays
-        ch_types = ['eeg'] * len(eeg_channels)
+        ch_types = ['eeg'] * ch_count
         # Need to append 'stim' info.
         ch_types.append('stim')
         sfreq = self.board.get_sampling_rate(self.board.board_id)
