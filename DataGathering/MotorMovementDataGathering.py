@@ -15,4 +15,4 @@ raw = stimulator.run_stim(return_raw=True)
 
 raw.plot(block=True)
 
-stimulator.save_data(file_name='subject1-27_08_2021-m_cortex_electrode_placement-mm-lr-003', type='movement')
+stimulator.save_data(file_name='subject1-27_08_2021-m_cortex_electrode_placement-mm-lr-004', type='movement')
