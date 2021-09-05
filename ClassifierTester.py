@@ -21,25 +21,20 @@
 import gen_tools
 import data_loading
 import keras_classifiers
+import LiveBCI
 
 # generic import
 import numpy as np
-import pandas as pd
-import seaborn as sns
-from matplotlib import pyplot as plt
 from datetime import datetime
 from time import time
 import random
-import sys
-from math import floor
+from os import listdir
+import fnmatch
+import re
 
 # mne import
 import mne
-from mne import Epochs, pick_types, events_from_annotations
-from mne.io import concatenate_raws
-from mne.io.edf import read_raw_edf
-from mne.datasets import eegbci
-from mne.decoding import CSP, Scaler, UnsupervisedSpatialFilter, Vectorizer
+from mne.decoding import CSP
 
 # pyriemann import
 from pyriemann.tangentspace import TangentSpace
@@ -49,13 +44,11 @@ from pyriemann.spatialfilters import CSP as CovCSP
 
 # sklearn imports
 from sklearn import svm
-from sklearn.feature_selection import f_classif, mutual_info_classif, f_regression, mutual_info_regression, SelectKBest
+from sklearn.feature_selection import VarianceThreshold
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import ShuffleSplit, cross_val_score, train_test_split, GridSearchCV, cross_validate
+from sklearn.model_selection import StratifiedKFold, train_test_split, GridSearchCV, cross_validate
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.pipeline import Pipeline
-from sklearn.decomposition import PCA, FastICA
-from sklearn.preprocessing import StandardScaler
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.linear_model import LogisticRegression
 from sklearn.utils import shuffle
@@ -63,7 +56,7 @@ from sklearn.utils import shuffle
 # keras imports
 from tensorflow.python.keras.callbacks import ModelCheckpoint, LearningRateScheduler
 from keras.utils import to_categorical
-from keras import backend
+
 
 class ClassifierTester:
     """A Class designed to test EEG data against a variety of classifiers.
@@ -119,10 +112,17 @@ class ClassifierTester:
 
         callback        :   A boolean determining whether neural networks will make use of callbacks to record weights
                             or network form during training for later use.
+
+        live_layout     :   A string determining the layout of EEG electrodes for the live recorded OpenBCI data.
+                            'headband' refers to the electrode set (F1, F2, O1, O2), and 'm_cortex' refers to the
+                            set (C3, Cz, C4).
+
+        avg             :   A boolean determining whether the results are presented as an average or an array of scores.
     """
 
     def __init__(self, data_source='physionet', type='movement', stim_select='lr', subj_range=None, result_metrics=["acc"],
-                 gridsearch=None, file=None, filter_bounds=[6., 30.], tmin=0., tmax=4., ch_list=[], slice_count=1, callback=False):
+                 gridsearch=None, file=None, filter_bounds=[6., 30.], tmin=0., tmax=4., ch_list=[], slice_count=1,
+                 callbacks=False, live_layout='headband', avg=True, random_state=1):
 
         mne.set_log_level('warning')
 
@@ -136,7 +136,10 @@ class ClassifierTester:
         self.sub_data_list = []
         self.sk_test = False
         self.nn_test = False
-        self.callback = callback
+        self.callbacks = callbacks
+        self.avg = avg
+        self.subj_range = subj_range
+        self.random_state = random_state
 
         # First, determine where we get our data.
         if data_source == 'physionet':
@@ -153,7 +156,7 @@ class ClassifierTester:
                                                                                       stop=subj_range[1]))
             else:
                 raise Exception(
-                    "Error, subj_range is invalid. Ensure it is two values between 1 and 109, with the first being larger")
+                    "Error, subj_range is invalid. Ensure it is two values between 1 and 109, with the first being smaller")
             # Now, iterate through the subjects, filter and epoch each, and pair the data and labels in an ordered list.
             for sub in range(r1, r2):
                 raw = data_loading.get_single_mi(sub, type_dict[(type, stim_select)])
@@ -164,8 +167,52 @@ class ClassifierTester:
                 data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=ch_list)
                 del epochs
                 self.sub_data_list.append([data, labels])
+
         elif data_source == 'live-movement':
-            raise Exception("'live-movement' Not Yet Implemented")
+            # Define our subject range for iteration
+            if subj_range is None:
+                r1 = 1
+                r2 = 2
+                print("Selecting {src} data for all subjects".format(src=data_source))
+            elif subj_range[0] > 0 and subj_range[0] < subj_range[1]:
+                r1 = subj_range[0]
+                r2 = subj_range[1]
+                print("Selecting {src} data for subjects {start} to {stop}...".format(src=data_source,
+                                                                                      start=subj_range[0],
+                                                                                      stop=subj_range[1]))
+            else:
+                raise Exception(
+                    "Error, subj_range is invalid. Ensure it is two values greater than zero, with the first being smaller")
+
+            #Grab the file names and filter to match what is needed.
+            rootpath = 'E:\\PycharmProjects\\OpenBCIResearch\\DataGathering\\LiveRecordings\\MotorResponses\\Movement\\'
+            file_paths = listdir(rootpath)
+            filt_files = []
+            if live_layout == 'headband':
+                for sub in range(r1, r2):
+                    filt_files.append(fnmatch.filter(file_paths, 'subject{sub}-??_??_????-mm-{stim}*'.format(sub=sub,
+                                                                                                 stim=stim_select)))
+            elif live_layout == 'm_cortex':
+                for sub in range(r1, r2):
+                    filt_files.append(fnmatch.filter(file_paths, 'subject{sub}-??_??_????-m_cortex_electrode_placement-mm-{stim}*'.format(sub=sub,
+                                                                                                 stim=stim_select)))
+            else:
+                raise Exception("Error: 'live_layout' must be either 'headband' or 'm_cortex'")
+
+            #Format the file paths and load them through LiveBCI
+            for sub in filt_files:
+                file_paths = []
+                for file_name in sub:
+                    file_paths.append(rootpath + file_name)
+                dloader = LiveBCI.MotorImageryStimulator(stim_time=4, wait_time=4, stim_count=5, stim_type='lr',
+                                                         board=None)
+                dloader.load_multiple_data(files=file_paths)
+                dloader.eeg_to_epochs(tmin=tmin, tmax=tmax, event_dict=dict(T1=2, T2=3), stim_ch='STI001')
+                epochs = dloader.epochs
+                data = epochs.get_data()
+                labels = epochs.events[:, -1] - 2
+                self.sub_data_list.append([data, labels])
+
         elif data_source == 'live-imagined':
             raise Exception("'live-imagined' Not Yet Implemented")
         elif data_source == 'mamem-ssvep':
@@ -194,9 +241,9 @@ class ClassifierTester:
         if len(self.result_metrics) < 1:
             raise Exception("Error: No valid metric specified in list 'result_metrics'.")
 
+        self.datetime = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
         if file is None:
             # Make our file name.
-            self.datetime = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
             if data_source == 'physionet':
                 filename = "test-results_{src}_{stim}-{type}_{datetime}".format(src=data_source, stim=stim_select,
                                                                                 type=type, datetime=self.datetime)
@@ -209,6 +256,9 @@ class ClassifierTester:
             elif data_source == 'mamem-ssvep':
                 filename = "test-results_{src}_{stim}_{datetime}".format(src=data_source, stim=stim_select,
                                                                          datetime=self.datetime)
+            else:
+                raise Exception("Error: 'data_source' must be a string matching either 'physionet', 'live-imagined', "
+                                "'live-movement' or 'mamem-ssvep'.")
 
             # Create and open a new file to record the results of the testing.
             path = "ClassifierTesterResults/{filename}.txt".format(filename=filename)
@@ -224,7 +274,7 @@ class ClassifierTester:
         self.nn_dict = {}
         if gridsearch is not None:
             print("Performing Gridsearch on compatible pipelines to find optimal parameters...")
-            if gridsearch >= 1 or gridsearch < 0:
+            if gridsearch > 1 or gridsearch <= 0:
                 raise Exception("Error: 'gridsearch' must be a value between 0 and 1, or None")
             pool_size = round(len(self.sub_data_list) * gridsearch)
             self.__gridsearch_params(pool_size=pool_size)
@@ -260,6 +310,7 @@ class ClassifierTester:
             self.__print("    Channels = All\n")
         else:
             self.__print("    Channels = {chs}\n".format(chs=ch_list))
+        self.__print("    Random State = {rand}\n".format(rand=random_state))
         return
 
     def __del__(self):
@@ -345,6 +396,12 @@ class ClassifierTester:
         #This will create sklearn-based classifiers with default parameters
         #that are determined by examples provided in the documentation for
         #MNE and PyRiemann libraries.
+        if len(self.sk_dict.keys()) > 0:
+            cont = self.__await_yesno(q_string="Warning: SKLearn classifiers are already initialised, do you wish to "
+                                               "overwrite them (y/n)?")
+            if cont is False:
+                return self.sk_dict
+
         pipelines = [self.__csp_knn(),
                      self.__csp_svm(),
                      self.__csp_lda(),
@@ -356,21 +413,35 @@ class ClassifierTester:
             self.sk_dict[pipe[0]] = pipe[1]
         return self.sk_dict
 
-
     def initialise_neural_networks(self, d_shape=None, d_fourth_axis=1):
         #This will construct compiled models set to defaults as determined
         #by the EEGNet and Fusion EEGNet documentation.
+        if len(self.sk_dict.keys()) > 0:
+            cont = self.__await_yesno(q_string="Warning: Neural Networks are already initialised, do you wish to "
+                                               "overwrite them (y/n)?")
+            if cont is False:
+                return self.nn_dict
+
         if d_shape is None:
             data_shape = self.sub_data_list[0][0].shape + (d_fourth_axis,)
         else:
             data_shape = d_shape
-        models = [self.__eegnet(data_shape=data_shape),
+        models = [self.__eegnet(data_shape=data_shape, chan=data_shape[1]),
                   self.__fusion_eegnet(data_shape=data_shape)]
         for model in models:
             self.nn_dict[model[0]] = (model[1], model[2])
         return self.nn_dict
 
     def __print_average_results(self, results):
+        #Here we get the average for each metric and print it.
+        for name in results.keys():
+            self.__print("Classifier: {n}\n".format(n=name))
+            for metric in results[name].keys():
+                self.__print("{m} = {r}\n".format(m=metric, r=np.mean(results[name][metric])))
+            self.__print("\n")
+        return
+
+    def __print_results(self, results):
         #Here we get the average for each metric and print it.
         for name in results.keys():
             self.__print("Classifier: {n}\n".format(n=name))
@@ -382,6 +453,29 @@ class ClassifierTester:
     def __print(self, string):
         print(string)
         self.result_file.write(string)
+        return
+
+    #Gives a particular question and
+    def __await_yesno(self, q_string='(y/n)?'):
+        val_input = False
+        ret_val = False
+        while not val_input:
+            inp = input(q_string)
+            if re.match(pattern='y|Y', string=inp):
+                ret_val = True
+                val_input = True
+            elif re.match(pattern='n|N', string=inp):
+                ret_val = False
+                val_input = True
+            else:
+                print("Error: Invalid response, please respond with either 'y' or 'n' in upper or lower case.")
+        return ret_val
+
+    def toggle_callbacks(self):
+        if self.callbacks is True:
+            self.callbacks = False
+        else:
+            self.callbacks = True
         return
 
     ##------------------------------------------------------------------------------------------------------------------
@@ -396,17 +490,20 @@ class ClassifierTester:
         print("Generating PCA-LDA classifier pipeline...")
         # Assemble classifiers
         lda = LinearDiscriminantAnalysis()
-        csp = CSP(reg=None, log=True)
+        var = VarianceThreshold(threshold=(.9 * (1 - .9)))
+        csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
         # create the pipeline
-        clf = Pipeline([('CSP', csp), ('LDA', lda)])
+        clf = Pipeline([('CSP', csp), ('VAR', var), ('LDA', lda)])
         # Form the parameter dictionary
         parameters = {
             'LDA__solver': ('svd', 'lsqr', 'eigen'),
             'CSP__n_components': range(2, max_csp_components + 1),
             'CSP__cov_est': ('concat', 'epoch'),
-            'CSP__norm_trace': (True, False)
+            'CSP__norm_trace': (True, False),
+            'VAR__threshold': ((.9 * (1 - .9)), (.85 * (1 - .85)), (.8 * (1 - .8)),
+                               (.75 * (1 - .75)))
         }
-        return ("CSP-LDA", clf, parameters)
+        return "CSP-LDA", clf, parameters
 
     def __csp_svm(self, n_logspace=10, max_csp_components=10):
         print("Generating CSP-SVM classifier pipeline...")
@@ -419,18 +516,21 @@ class ClassifierTester:
             n_logspace = 10
         # Assemble classifiers
         svc = svm.SVC()
-        csp = CSP(reg=None, log=True)
+        var = VarianceThreshold(threshold=(.9 * (1 - .9)))
+        csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
         # create the pipeline
-        clf = Pipeline([('CSP', csp), ('SVC', svc)])
+        clf = Pipeline([('CSP', csp), ('VAR', var), ('SVC', svc)])
         # Form the parameter dictionary
         parameters = {
             'SVC__C': np.logspace(start=1, stop=10, num=n_logspace, base=10).tolist(),
             # 'SVC__kernel': ('linear', 'poly', 'rbf', 'sigmoid'),
             'CSP__n_components': range(2, max_csp_components + 1),
             'CSP__cov_est': ('concat', 'epoch'),
-            'CSP__norm_trace': (True, False)
+            'CSP__norm_trace': (True, False),
+            'VAR__threshold': ((.9 * (1 - .9)), (.85 * (1 - .85)), (.8 * (1 - .8)),
+                               (.75 * (1 - .75)))
         }
-        return ("CSP-SVM", clf, parameters)
+        return "CSP-SVM", clf, parameters
 
     def __csp_knn(self, max_n_neighbors=4, max_csp_components=10):
         print("Generating CSP-KNN classifier pipeline...")
@@ -443,9 +543,10 @@ class ClassifierTester:
             max_n_neighbors = 4
         # Assemble classifiers
         knn = KNeighborsClassifier()
-        csp = CSP(reg=None, log=True)
+        var = VarianceThreshold(threshold=(.9 * (1 - .9)))
+        csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
         # create the pipeline
-        clf = Pipeline([('CSP', csp), ('KNN', knn)])
+        clf = Pipeline([('CSP', csp), ('VAR', var), ('KNN', knn)])
         # Form the parameter dictionary
         parameters = {
             'KNN__n_neighbors': range(2, max_n_neighbors + 1),
@@ -453,9 +554,11 @@ class ClassifierTester:
             'KNN__algorithm': ('ball_tree', 'kd_tree', 'brute'),
             'CSP__n_components': range(2, max_csp_components + 1),
             'CSP__cov_est': ('concat', 'epoch'),
-            'CSP__norm_trace': (True, False)
+            'CSP__norm_trace': (True, False),
+            'VAR__threshold': ((.9 * (1 - .9)), (.85 * (1 - .85)), (.8 * (1 - .8)),
+                               (.75 * (1 - .75)))
         }
-        return ("CSP-KNN", clf, parameters)
+        return "CSP-KNN", clf, parameters
 
     ##------------------------------------------------------------------------------------------------------------------
     ##PyRiemann Classifiers
@@ -500,7 +603,7 @@ class ClassifierTester:
             print("Parameter 'max_n_filters' is below 2, setting to default.")
             max_n_filters = 10
         cov = Covariances()
-        csp = CovCSP()
+        csp = CovCSP(nfilter=4, log=True)
         lda = LinearDiscriminantAnalysis()
         clf = Pipeline([('COV', cov), ('CSP', csp), ('LDA', lda)])
         # Form the parameter dictionary
@@ -519,7 +622,7 @@ class ClassifierTester:
             print("Parameter 'max_n_filters' is below 2, setting to default.")
             max_n_filters = 10
         cov = Covariances()
-        csp = CovCSP()
+        csp = CovCSP(nfilter=4, log=True)
         lr = LogisticRegression(max_iter=1000)
         clf = Pipeline([('COV', cov), ('CSP', csp), ('LR', lr)])
         # Form the parameter dictionary
@@ -592,13 +695,44 @@ class ClassifierTester:
     ##------------------------------------------------------------------------------------------------------------------
 
     #Trains and tests each classifier on each subject individually.
-    def run_individual_test(self, sk_test=True, nn_test=True, sk_select=None, nn_select=None, train_test_split=0.2,
-                            print_file=True):
+    def run_individual_test(self, sk_test=True, nn_test=True, sk_select=None, nn_select=None, cross_val_times=10):
+        # These are internal switches to control which classifiers are used in the train/test internal methods.
+        self.sk_test = sk_test
+        self.sk_select = sk_select
+        self.nn_test = nn_test
+        self.nn_select = nn_select
+
+        # See if our classifiers are already generated, and if not, do so.
+        if not self.sk_class_loaded:
+            self.initialise_sklearn_classifiers()
+        if not self.nn_class_loaded:
+            self.initialise_neural_networks()
+
+        # Write our initial text into results.
+        self.__print("--INDIVIDUAL TEST--\n")
+        self.__print("Parameters:\n")
+        self.__print("    sk_test = {sk}, sk_select = {sks}\n".format(sk=sk_test, sks=sk_select))
+        self.__print("    nn_test = {nn}, nn_select = {nns}\n".format(nn=nn_test, nns=nn_select))
+        self.__print("    cross_val_times = {cvt}\n".format(cvt=cross_val_times))
+
+        #Find the subject offset.
+        if self.subj_range is not None:
+            sub_offset = self.subj_range[0]
+        else:
+            sub_offset = 1
+
+        rand_state = random.randint(0, 99999)
+        for sub in range(0, len(self.sub_data_list)):
+            self.__print("--Subj No. {n}: \n".format(n=sub + sub_offset))
+            # Perform the cross validation.
+            results = self.__stratified_cross_val(self.sub_data_list[sub][0], self.sub_data_list[sub][1],
+                                                  cross_val_times)
+            self.__print_average_results(results=results)
         return
 
     #Trains and tests each classifier on randomised batches of subjects.
     def run_batch_test(self, batch_size, n_times, sk_test=True, nn_test=True, sk_select=None, nn_select=None,
-                       test_split=0.2, split_subject=False, cross_val_times=5):
+                       test_split=0.2, split_subject=False, cross_val_times=10):
         #Check parameters.
         if n_times < 1:
             raise Exception("Error: Attribute 'n_times' must be greater than or equal to 1.")
@@ -641,7 +775,10 @@ class ClassifierTester:
         count = 1
         for result in results:
             self.__print("--Batch No. {n}: \n".format(n=count))
-            self.__print_average_results(result)
+            if self.avg:
+                self.__print_average_results(result)
+            else:
+                self.__print_results(result)
             self.__print("\n")
             count = count + 1
         return
@@ -716,18 +853,18 @@ class ClassifierTester:
 
         return results
 
-    def __stratified_cross_val(self, data, labels, cv=5, test_split=0.2):
+    def __stratified_cross_val(self, data, labels, cv=10):
         #Initialise the result dictionary.
         #will be in form 'Classifier Name' : 'Cross Validation Results'
         results = {}
 
-        cross_split = ShuffleSplit(n_splits=5, test_size=test_split)
+        kfold = StratifiedKFold(n_splits=cv, shuffle=True, random_state=self.random_state)
         #perform stratified cross validation for sk learn format models.
         if self.sk_test:
             for name, classifier in self.sk_dict.items():
                 if self.sk_select is None or name in self.sk_select: #Thank the lord for short-circuit evaluation...
                     scores = cross_validate(classifier, data, labels, scoring=self.result_metrics,
-                         cv=cross_split, return_train_score=True)
+                         cv=kfold, return_train_score=True)
                     results[name] = scores
 
         # Perform stratified cross validation for neural network models.
@@ -755,10 +892,11 @@ class ClassifierTester:
             labels = np.concatenate(
                 (labels, self.sub_data_list[cur_sub][1]),
                 axis=0)
-        data, labels = shuffle(data, labels, random_state=1)
+        data, labels = shuffle(data, labels)
 
         #Perform the cross validation.
-        results = self.__stratified_cross_val(data, labels, cross_val_times, test_split)
+        rand_state = random.randint(0,99999)
+        results = self.__stratified_cross_val(data, labels, cross_val_times)
         return results
 
     def __split_subject_train_test_classifiers(self, batch_size, cross_val_times, test_split):
@@ -814,8 +952,8 @@ class ClassifierTester:
                     axis=0)
 
             # Randomise them both.
-            data_test, labels_test = shuffle(data_test, labels_test, random_state=1)
-            data_train, labels_train = shuffle(data_train, labels_train, random_state=1)
+            data_test, labels_test = shuffle(data_test, labels_test)
+            data_train, labels_train = shuffle(data_train, labels_train)
 
             self.__train(data_train, labels_train)
             results.append(self.__test(data_test, labels_test))
@@ -839,8 +977,8 @@ class ClassifierTester:
 print(mne.get_config('MNE_LOGGING_LEVEL'))
 mne.set_config('MNE_LOGGING_LEVEL', 'warning')
 print(mne.get_config('MNE_LOGGING_LEVEL'))
-test = ClassifierTester(subj_range=[1, 50], gridsearch=None, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'])
-test.initialise_sklearn_classifiers()
-test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False)
-test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False, split_subject=True)
-
+test = ClassifierTester(subj_range=[1, 11],data_source='physionet', stim_select='hf', type='imaginary',
+                        gridsearch=None, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'], random_state=42)
+print(test.sub_data_list[0][0].shape)
+test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=10)
+#test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False)

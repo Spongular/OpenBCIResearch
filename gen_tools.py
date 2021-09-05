@@ -231,6 +231,9 @@ def slice_data(data, labels, slice=8):
     #Now, we fill our list with array slices.
     while count < slice:
         slices.append(np.array(data[:, :, prev_ind:cur_ind]))
+        prev_ind = cur_ind
+        cur_ind = cur_ind + slice_size
+        count = count + 1
 
     #Now, we pop our first slice from the list, create our new labels array,
     #and for each remaining slice we concatenate it to the first, and concatenate

@@ -90,7 +90,7 @@ def convEEGNet(input_shape, chan, n_classes=2, n_filt = [8, 16, 16],
                d_rate=0.25):
     #Initialising.
     input_shape = input_shape[1:]
-    model = Sequential()
+    model = Sequential(name="EEGNet-WangXiangEtAl")
 
     #First Layer.
     #This is the temporal convolution.
@@ -309,7 +309,7 @@ def EEGNet(nb_classes, Chans=64, Samples=128, ThirdAxis=1,
                   kernel_constraint=max_norm(norm_rate))(flatten)
     softmax = Activation('softmax', name='softmax')(dense)
 
-    return Model(inputs=input1, outputs=softmax)
+    return Model(inputs=input1, outputs=softmax, name="EEGNet-MilResearch")
 
 
 def DeepConvNet(nb_classes, Chans=64, Samples=256,
@@ -384,7 +384,7 @@ def DeepConvNet(nb_classes, Chans=64, Samples=256,
 #That model had: conv_kernels=(8, 16, 32) and sep_conv_kernels=(16, 32, 64)
 def fusionEEGNet(n_classes, chans=64, samples=128, third_axis=1, l_rate=0.01,
                  dropout_rate=0.5, norm_rate=0.25, dropout_type='Dropout',
-                 batch_norm=True, conv_kernels=(4, 8, 16), sep_conv_kernels=(16, 16, 16)):
+                 batch_norm=True, conv_kernels=(8, 16, 32), sep_conv_kernels=(16, 32, 64)):
 
     #Determine the dropout type.
     #There's no reason not to provide this option just like the EEGNet method.
@@ -484,7 +484,7 @@ def fusionEEGNet(n_classes, chans=64, samples=128, third_axis=1, l_rate=0.01,
                   kernel_constraint=max_norm(norm_rate))(flatten)
     softmax = Activation('softmax', name='Softmax')(dense)
 
-    model = Model(inputs=input1, outputs=softmax)
+    model = Model(inputs=input1, outputs=softmax, name="FusionEEGNet")
     opt = Adam(lr=l_rate)
     model.summary()
     return model, opt

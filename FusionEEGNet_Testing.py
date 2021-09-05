@@ -1,6 +1,7 @@
 #This is an implementation of the EEGNet architecture described in the work:
-#An Accurate EEGNet-based Motor-Imagery Brain–Computer Interface for Low-Power Edge Computing
-#Available at: https://arxiv.org/abs/2004.00077
+#Fusion Convolutional Neural Network for Cross-Subject EEG Motor Imagery Classification
+#Available at: https://www.mdpi.com/2073-431X/9/3/72/pdf
+#https://github.com/rootskar/EEGMotorImagery/blob/master/EEGModels.py
 
 import mne
 from mne.io import read_raw_edf
@@ -28,20 +29,23 @@ mne.set_log_level('WARNING')
 #load our data.
 raw = data_loading.get_all_mi_between(1, 110, 1, ["38", "088", "89", "092", "100", "104"])
 
-#Run a Highpass filter to get rid of low-frequency drift and other issues.
-#This isn't specified in the paper, but is common practice and thus assumed.
-raw = gen_tools.preprocess_highpass(raw, min=4., fir_design='firwin')
-
+#preprocess
+raw = gen_tools.preprocess_bandpass(raw, min=4, max=50)
 
 #Epoch our data.
 tmin = 0.
 tmax = 4.
-#(C3, C4 and Cz got 70% or so.)
-#data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=["Fp1", "Fp2", "O1", "O2"], scale=1000)
 data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, scale=1000)
 print(epochs.ch_names)
 #We don't need the epoch objects as we have the data/labels.
 del epochs
+
+#Slice and dice, my brothers.
+slice_count = 8
+print("Data Set Before Slicing: {}".format(data.shape))
+print("Slicing Data Into {count} Pieces...".format(count=slice_count))
+data, labels = gen_tools.slice_data(data, labels, slice_count)
+print("Data Set After Slicing: {}".format(data.shape))
 
 #Shuffle and Normalise our data
 data, labels = shuffle(data, labels, random_state=1)
@@ -49,7 +53,6 @@ data, labels = shuffle(data, labels, random_state=1)
 #Reshape the data and then expand our dimensions to fit the model.
 print("Data Set Before Reshape: {}".format(data.shape))
 print("Reshaping Data...")
-#data = np.reshape(data, (data.shape[0], data.shape[2], data.shape[1]))
 data = gen_tools.reshape_3to4(data)
 print("Data Set After Reshape: {}".format(data.shape))
 
@@ -65,9 +68,8 @@ y_test = to_categorical(y_test, 2)
 
 #Generate model, optimiser and checkpointer.
 dropout = 0.5
-model, opt = keras_classifiers.convEEGNet(input_shape=X_train.shape, chan=4, n_classes=2, d_rate=dropout, first_tf_size=128)
-#model, opt = keras_classifiers.test(nb_classes=2, Chans=data.shape[1], Samples=data.shape[2], ThirdAxis=data.shape[3],
-#                                     dropoutRate=0.5, kernLength=32, F1=8, D=2, F2=16,)
+model, opt = keras_classifiers.fusionEEGNet(n_classes=2, chans=X_train.shape[1], samples=X_train.shape[2],
+                                            third_axis=X_train.shape[3], l_rate=1E-4, dropout_rate=dropout)
 filepath = "NN_Weights/convEEGNet/4-channel-headband/4-Channel-HeadbandLayout-MotorMovement--50%-dropout-{epoch:02d}-{val_accuracy:.2f}.h5"
 checkpointer = ModelCheckpoint(filepath=filepath, verbose=1,
                                save_best_only=True)
@@ -77,10 +79,10 @@ model.compile(loss='categorical_crossentropy', optimizer=opt,
 #Form the learning rate scheduler.
 scheduler = LearningRateScheduler(keras_classifiers.EEGNetScheduler)
 
-
-fittedModel = model.fit(X_train, y_train, batch_size = 16, epochs = 100,
+fittedModel = model.fit(X_train, y_train, epochs = 100,
                         verbose = 2, validation_data=(X_val, y_val),
-                        callbacks=[checkpointer, scheduler], class_weight=class_weights)
+                        class_weight=class_weights)
+#Add callbacks=[checkpointer, scheduler] to include callbacks
 
 probs       = model.predict(X_test)
 preds       = probs.argmax(axis = -1)
@@ -107,5 +109,3 @@ plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'val'], loc='upper left')
 plt.show(block=True)
-
-

@@ -5,6 +5,7 @@
 #Here, we can set our details for the epoch gathering.
 import mne
 import numpy as np
+import random
 import matplotlib.pyplot as plt
 from mne import concatenate_raws, events_from_annotations, pick_types, Epochs
 from mne.channels import make_standard_montage
@@ -13,20 +14,21 @@ from mne.decoding import CSP
 from mne.io import read_raw_edf
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn import svm
-from sklearn.model_selection import ShuffleSplit, cross_val_score
+from sklearn.model_selection import ShuffleSplit, cross_val_score, StratifiedKFold
+from sklearn.feature_selection import VarianceThreshold
 from sklearn.pipeline import Pipeline
 
 mne.set_log_level('WARNING')
-tmin, tmax = -1., 4. #This determines the boundaries for the epochs.
+tmin, tmax = 0., 4. #This determines the boundaries for the epochs.
 #event_dict = dict(hands=2, feet=3) #Define our events.
 
 #Select the hands & feet tests.
 files = []
 for a in range(1, 2):
     num = "{0:03}".format(a)
-    files += ["EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R06.edf",
-              "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R10.edf",
-              "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R14.edf"]
+    files += ["EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R03.edf",
+              "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R07.edf",
+              "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R11.edf"]
 
 #load the files.
 raw = concatenate_raws([read_raw_edf(f, preload=True) for f in files])
@@ -64,19 +66,21 @@ print(labels.shape)
 scores = []
 epochs_data = epochs.get_data()
 epochs_data_train = epochs_train.get_data()
-cv = ShuffleSplit(10, test_size=0.2, random_state=42)
+print(epochs_data.shape)
+rand = random.randint(1, 99999)
+cv2 = StratifiedKFold(n_splits=5, shuffle=True, random_state=rand)
+cv = ShuffleSplit(10, test_size=0.2, random_state=rand)
 cv_split = cv.split(epochs_data_train)
 
 #Assemble classifiers
-lda = LinearDiscriminantAnalysis()
-svm = svm.SVC(kernel='linear', C=1, random_state=42)
 csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
+var = VarianceThreshold(threshold=(.9 * (1 - .9)))
+lda = LinearDiscriminantAnalysis()
 
 #Use scikit-learn pipeline with cross_val_score function
-clf = Pipeline([('CSP', csp), ('LDA', lda)])
-clf2 = Pipeline([('CSP', csp), ('SVM', svm)])
+clf = Pipeline([('CSP', csp), ('VAR', var), ('LDA', lda)])
+#clf = Pipeline([('CSP', csp), ('LDA', lda)])
 scores = cross_val_score(clf, epochs_data, labels, cv=cv, n_jobs=1)
-scores2 = cross_val_score(clf2, epochs_data_train, labels, cv=cv, n_jobs=1)
 
 #And print them
 class_balance = np.mean(labels == labels[0])
@@ -84,10 +88,11 @@ class_balance = max(class_balance, 1. - class_balance)
 print("LDA Classification accuracy: %f / Chance level: %f" % (np.mean(scores),
                                                           class_balance))
 
+scores = cross_val_score(clf, epochs_data, labels, cv=cv2, n_jobs=1)
 #And print them
 class_balance = np.mean(labels == labels[0])
 class_balance = max(class_balance, 1. - class_balance)
-print("SVM Classification accuracy: %f / Chance level: %f" % (np.mean(scores2),
+print("LDA Classification accuracy: %f / Chance level: %f" % (np.mean(scores),
                                                           class_balance))
 
 # plot some CSP patterns

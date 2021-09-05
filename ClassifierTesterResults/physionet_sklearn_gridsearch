@@ -1,0 +1,637 @@
+C:\Users\Daniel\AppData\Local\Programs\Python\Python36\python.exe E:/PycharmProjects/OpenBCIResearch/ClassifierTester.py
+2021-09-04 16:58:56.925302: W tensorflow/stream_executor/platform/default/dso_loader.cc:60] Could not load dynamic library 'cudart64_110.dll'; dlerror: cudart64_110.dll not found
+2021-09-04 16:58:56.925495: I tensorflow/stream_executor/cuda/cudart_stub.cc:29] Ignore above cudart dlerror if you do not have a GPU set up on your machine.
+warning
+warning
+Selecting physionet data for subjects 1 to 2...
+Standardising Raw, setting montage and fixing channel names...
+Performing bandpass filter in range 6.000000 to 30.000000
+Extracting epochs from raw...
+((), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), (), ())
+{'T1': 2, 'T2': 3}
+Generated new file on path 'ClassifierTesterResults/test-results_physionet_lr-movement_04-09-2021_16-59-01.txt'
+Performing Gridsearch on compatible pipelines to find optimal parameters...
+Generating CSP-KNN classifier pipeline...
+Generating CSP-SVM classifier pipeline...
+Generating PCA-LDA classifier pipeline...
+Generating MDM classifier pipeline...
+Generating TS-LR classifier pipeline...
+Generating CovCSP-LDA classifier pipeline...
+Generating CovCSP-LR classifier pipeline...
+
+Performing gridsearch on pipeline: CSP-KNN
+Performing GridSearchCV to find optimal parameter set...
+GridSearchCV completed in 504.448s
+Displaying Results...
+Best score: 0.689
+Best parameters set:
+	CSP__cov_est: 'concat'
+	CSP__n_components: 8
+	CSP__norm_trace: True
+	KNN__algorithm: 'ball_tree'
+	KNN__n_neighbors: 2
+	KNN__weights: 'uniform'
+
+Performing gridsearch on pipeline: CSP-SVM
+Performing GridSearchCV to find optimal parameter set...
+GridSearchCV completed in 288.416s
+Displaying Results...
+Best score: 0.667
+Best parameters set:
+	CSP__cov_est: 'concat'
+	CSP__n_components: 5
+	CSP__norm_trace: False
+	SVC__C: 10.0
+
+Performing gridsearch on pipeline: CSP-LDA
+Performing GridSearchCV to find optimal parameter set...
+GridSearchCV completed in 84.094s
+Displaying Results...
+Best score: 0.689
+Best parameters set:
+	CSP__cov_est: 'concat'
+	CSP__n_components: 8
+	CSP__norm_trace: False
+	LDA__solver: 'svd'
+
+Performing gridsearch on pipeline: MDM
+Performing GridSearchCV to find optimal parameter set...
+GridSearchCV completed in 1280.000s
+Displaying Results...
+Best score: 0.489
+Best parameters set:
+	COV__estimator: 'cov'
+	MDM__metric: 'riemann'
+
+Performing gridsearch on pipeline: TS-LR
+Performing GridSearchCV to find optimal parameter set...
+GridSearchCV completed in 1372.029s
+Displaying Results...
+Best score: 0.622
+Best parameters set:
+	COV__estimator: 'mcd'
+	TS__metric: 'riemann'
+
+Performing gridsearch on pipeline: CovCSP-LDA
+Performing GridSearchCV to find optimal parameter set...
+GridSearchCV completed in 30151.221s
+Displaying Results...
+Best score: 0.800
+Best parameters set:
+	COV__estimator: 'mcd'
+	CSP__metric: 'riemann'
+	CSP__nfilter: 2
+	LDA__solver: 'lsqr'
+
+Performing gridsearch on pipeline: CovCSP-LR
+Performing GridSearchCV to find optimal parameter set...
+GridSearchCV completed in 9852.308s
+Displaying Results...
+Best score: 0.756
+Best parameters set:
+	COV__estimator: 'mcd'
+	CSP__metric: 'riemann'
+	CSP__nfilter: 2
+Results for ClassifierTester Class on dataset 'physionet'
+
+Date/Time: 04-09-2021_16-59-01
+
+Settings:
+
+    Type = movement - lr
+
+    Subject Range = [1, 2]
+
+    Result Metrics = ['acc', 'f1', 'rec', 'prec', 'roc']
+
+    Gridsearch = 1
+    Filter Bounds = [6.0, 30.0]
+
+    tmin = 0.0, tmax = 4.0
+
+    Channels = All
+
+Generating CSP-KNN classifier pipeline...
+Generating CSP-SVM classifier pipeline...
+Generating PCA-LDA classifier pipeline...
+Generating MDM classifier pipeline...
+Generating TS-LR classifier pipeline...
+Generating CovCSP-LDA classifier pipeline...
+Generating CovCSP-LR classifier pipeline...
+(45, 64, 641)
+2021-09-05 05:04:33.844288: I tensorflow/compiler/jit/xla_cpu_device.cc:41] Not creating XLA devices, tf_xla_enable_xla_devices not set
+2021-09-05 05:04:33.855345: I tensorflow/stream_executor/platform/default/dso_loader.cc:49] Successfully opened dynamic library nvcuda.dll
+2021-09-05 05:04:33.949669: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1720] Found device 0 with properties:
+pciBusID: 0000:01:00.0 name: GeForce RTX 2060 computeCapability: 7.5
+coreClock: 1.755GHz coreCount: 30 deviceMemorySize: 6.00GiB deviceMemoryBandwidth: 312.97GiB/s
+2021-09-05 05:04:33.951394: W tensorflow/stream_executor/platform/default/dso_loader.cc:60] Could not load dynamic library 'cudart64_110.dll'; dlerror: cudart64_110.dll not found
+2021-09-05 05:04:33.952212: W tensorflow/stream_executor/platform/default/dso_loader.cc:60] Could not load dynamic library 'cublas64_11.dll'; dlerror: cublas64_11.dll not found
+2021-09-05 05:04:33.952983: W tensorflow/stream_executor/platform/default/dso_loader.cc:60] Could not load dynamic library 'cublasLt64_11.dll'; dlerror: cublasLt64_11.dll not found
+2021-09-05 05:04:33.953839: W tensorflow/stream_executor/platform/default/dso_loader.cc:60] Could not load dynamic library 'cufft64_10.dll'; dlerror: cufft64_10.dll not found
+2021-09-05 05:04:33.954602: W tensorflow/stream_executor/platform/default/dso_loader.cc:60] Could not load dynamic library 'curand64_10.dll'; dlerror: curand64_10.dll not found
+2021-09-05 05:04:33.955434: W tensorflow/stream_executor/platform/default/dso_loader.cc:60] Could not load dynamic library 'cusolver64_10.dll'; dlerror: cusolver64_10.dll not found
+2021-09-05 05:04:33.956454: W tensorflow/stream_executor/platform/default/dso_loader.cc:60] Could not load dynamic library 'cusparse64_11.dll'; dlerror: cusparse64_11.dll not found
+2021-09-05 05:04:33.957235: W tensorflow/stream_executor/platform/default/dso_loader.cc:60] Could not load dynamic library 'cudnn64_8.dll'; dlerror: cudnn64_8.dll not found
+2021-09-05 05:04:33.957377: W tensorflow/core/common_runtime/gpu/gpu_device.cc:1757] Cannot dlopen some GPU libraries. Please make sure the missing libraries mentioned above are installed properly if you would like to use GPU. Follow the guide at https://www.tensorflow.org/install/gpu for how to download and setup the required libraries for your platform.
+Skipping registering GPU devices...
+2021-09-05 05:04:33.966565: I tensorflow/core/platform/cpu_feature_guard.cc:142] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2021-09-05 05:04:34.007115: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1261] Device interconnect StreamExecutor with strength 1 edge matrix:
+2021-09-05 05:04:34.007275: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1267]
+2021-09-05 05:04:34.007927: I tensorflow/compiler/jit/xla_gpu_device.cc:99] Not creating XLA devices, tf_xla_enable_xla_devices not set
+Model: "EEGNet-WangXiangEtAl"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #
+=================================================================
+conv2d (Conv2D)              (None, 64, 641, 8)        1024
+_________________________________________________________________
+bnorm1 (BatchNormalization)  (None, 64, 641, 8)        32
+_________________________________________________________________
+depthwise_conv2d (DepthwiseC (None, 1, 641, 16)        1024
+_________________________________________________________________
+batch_normalization (BatchNo (None, 1, 641, 16)        64
+_________________________________________________________________
+activation (Activation)      (None, 1, 641, 16)        0
+_________________________________________________________________
+average_pooling2d (AveragePo (None, 1, 80, 16)         0
+_________________________________________________________________
+dropout (Dropout)            (None, 1, 80, 16)         0
+_________________________________________________________________
+separable_conv2d (SeparableC (None, 1, 80, 16)         512
+_________________________________________________________________
+batch_normalization_1 (Batch (None, 1, 80, 16)         64
+_________________________________________________________________
+activation_1 (Activation)    (None, 1, 80, 16)         0
+_________________________________________________________________
+average_pooling2d_1 (Average (None, 1, 10, 16)         0
+_________________________________________________________________
+dropout_1 (Dropout)          (None, 1, 10, 16)         0
+_________________________________________________________________
+flatten (Flatten)            (None, 160)               0
+_________________________________________________________________
+dense (Dense)                (None, 2)                 322
+_________________________________________________________________
+activation_2 (Activation)    (None, 2)                 0
+=================================================================
+Total params: 3,042
+Trainable params: 2,962
+Non-trainable params: 80
+_________________________________________________________________
+--BATCH TEST--
+
+Parameters:
+
+    batch_size = 10
+
+    n_times = 5
+
+    sk_test = True, sk_select = None
+
+    nn_test = False, nn_select = None
+
+    train_test_split = <function train_test_split at 0x0000027B2EC48C80>, split_subjects = False
+
+    cross_val_times = 10
+
+--Batch No. 1:
+
+Classifier: CSP-KNN
+
+fit_time = 0.20131490230560303
+
+score_time = 0.0013957262039184571
+
+test_score = 0.5449999999999999
+
+train_score = 0.9385365853658536
+
+
+
+Classifier: CSP-SVM
+
+fit_time = 0.20097055435180664
+
+score_time = 0.0005990982055664063
+
+test_score = 0.55
+
+train_score = 0.9632317073170732
+
+
+
+Classifier: CSP-LDA
+
+fit_time = 0.19879436492919922
+
+score_time = 0.0005989551544189453
+
+test_score = 0.575
+
+train_score = 0.9705487804878048
+
+
+
+Classifier: MDM
+
+fit_time = 0.701199746131897
+
+score_time = 0.019547629356384277
+
+test_score = 0.5
+
+train_score = 0.9828048780487805
+
+
+
+Classifier: TS-LR
+
+fit_time = 0.6994443416595459
+
+score_time = 0.010130190849304199
+
+test_score = 0.585
+
+train_score = 1.0
+
+
+
+Classifier: CovCSP-LDA
+
+fit_time = 0.022146964073181154
+
+score_time = 0.0012965440750122071
+
+test_score = 0.575
+
+train_score = 0.9705487804878048
+
+
+
+Classifier: CovCSP-LR
+
+fit_time = 0.02440774440765381
+
+score_time = 0.0014914989471435547
+
+test_score = 0.5900000000000001
+
+train_score = 0.9435365853658537
+
+
+
+
+
+--Batch No. 2:
+
+Classifier: CSP-KNN
+
+fit_time = 0.20154836177825927
+
+score_time = 0.0014951229095458984
+
+test_score = 0.5599999999999999
+
+train_score = 0.9457926829268294
+
+
+
+Classifier: CSP-SVM
+
+fit_time = 0.20109102725982667
+
+score_time = 0.0007975816726684571
+
+test_score = 0.6449999999999999
+
+train_score = 0.9506707317073172
+
+
+
+Classifier: CSP-LDA
+
+fit_time = 0.2020780086517334
+
+score_time = 0.0004982233047485351
+
+test_score = 0.64
+
+train_score = 0.9554878048780487
+
+
+
+Classifier: MDM
+
+fit_time = 0.6929609537124634
+
+score_time = 0.019747328758239747
+
+test_score = 0.44000000000000006
+
+train_score = 0.9826219512195122
+
+
+
+Classifier: TS-LR
+
+fit_time = 0.7098621845245361
+
+score_time = 0.010334587097167969
+
+test_score = 0.5700000000000001
+
+train_score = 1.0
+
+
+
+Classifier: CovCSP-LDA
+
+fit_time = 0.021858620643615722
+
+score_time = 0.0014957666397094726
+
+test_score = 0.64
+
+train_score = 0.9554878048780487
+
+
+
+Classifier: CovCSP-LR
+
+fit_time = 0.024506568908691406
+
+score_time = 0.001598525047302246
+
+test_score = 0.5349999999999999
+
+train_score = 0.9383536585365853
+
+
+
+
+
+--Batch No. 3:
+
+Classifier: CSP-KNN
+
+fit_time = 0.20094382762908936
+
+score_time = 0.0013959646224975587
+
+test_score = 0.515
+
+train_score = 0.9309146341463415
+
+
+
+Classifier: CSP-SVM
+
+fit_time = 0.20351498126983641
+
+score_time = 0.000598001480102539
+
+test_score = 0.5599999999999999
+
+train_score = 0.9432317073170731
+
+
+
+Classifier: CSP-LDA
+
+fit_time = 0.20171818733215333
+
+score_time = 0.0005982398986816406
+
+test_score = 0.61
+
+train_score = 0.953109756097561
+
+
+
+Classifier: MDM
+
+fit_time = 0.7019871711730957
+
+score_time = 0.019448018074035643
+
+test_score = 0.275
+
+train_score = 0.9506097560975609
+
+
+
+Classifier: TS-LR
+
+fit_time = 0.7185142755508422
+
+score_time = 0.010036945343017578
+
+test_score = 0.505
+
+train_score = 1.0
+
+
+
+Classifier: CovCSP-LDA
+
+fit_time = 0.02194690704345703
+
+score_time = 0.0014988183975219727
+
+test_score = 0.61
+
+train_score = 0.953109756097561
+
+
+
+Classifier: CovCSP-LR
+
+fit_time = 0.024292397499084472
+
+score_time = 0.0014948606491088866
+
+test_score = 0.5599999999999999
+
+train_score = 0.9234756097560975
+
+
+
+
+
+--Batch No. 4:
+
+Classifier: CSP-KNN
+
+fit_time = 0.20226404666900635
+
+score_time = 0.0014987230300903321
+
+test_score = 0.585
+
+train_score = 0.9383536585365855
+
+
+
+Classifier: CSP-SVM
+
+fit_time = 0.20125741958618165
+
+score_time = 0.00039925575256347654
+
+test_score = 0.6
+
+train_score = 0.9678658536585365
+
+
+
+Classifier: CSP-LDA
+
+fit_time = 0.20274481773376465
+
+score_time = 0.0005988359451293945
+
+test_score = 0.625
+
+train_score = 0.9555487804878048
+
+
+
+Classifier: MDM
+
+fit_time = 0.6988492727279663
+
+score_time = 0.01984710693359375
+
+test_score = 0.5599999999999999
+
+train_score = 0.9778048780487806
+
+
+
+Classifier: TS-LR
+
+fit_time = 0.7113335847854614
+
+score_time = 0.01053478717803955
+
+test_score = 0.63
+
+train_score = 1.0
+
+
+
+Classifier: CovCSP-LDA
+
+fit_time = 0.021927547454833985
+
+score_time = 0.0014961957931518555
+
+test_score = 0.625
+
+train_score = 0.9555487804878048
+
+
+
+Classifier: CovCSP-LR
+
+fit_time = 0.024376702308654786
+
+score_time = 0.0016852855682373048
+
+test_score = 0.5549999999999999
+
+train_score = 0.9505487804878049
+
+
+
+
+
+--Batch No. 5:
+
+Classifier: CSP-KNN
+
+fit_time = 0.20176708698272705
+
+score_time = 0.0013964414596557618
+
+test_score = 0.545
+
+train_score = 0.9410365853658537
+
+
+
+Classifier: CSP-SVM
+
+fit_time = 0.20470070838928223
+
+score_time = 0.0005008220672607422
+
+test_score = 0.595
+
+train_score = 0.9533536585365854
+
+
+
+Classifier: CSP-LDA
+
+fit_time = 0.20093915462493897
+
+score_time = 0.000699305534362793
+
+test_score = 0.64
+
+train_score = 0.9509146341463415
+
+
+
+Classifier: MDM
+
+fit_time = 0.7066069841384888
+
+score_time = 0.020805096626281737
+
+test_score = 0.45500000000000007
+
+train_score = 0.9878048780487806
+
+
+
+Classifier: TS-LR
+
+fit_time = 0.7018552780151367
+
+score_time = 0.01041717529296875
+
+test_score = 0.55
+
+train_score = 1.0
+
+
+
+Classifier: CovCSP-LDA
+
+fit_time = 0.02203540802001953
+
+score_time = 0.001296687126159668
+
+test_score = 0.64
+
+train_score = 0.9509146341463415
+
+
+
+Classifier: CovCSP-LR
+
+fit_time = 0.023813319206237794
+
+score_time = 0.001700758934020996
+
+test_score = 0.54
+
+train_score = 0.9411585365853659
+
+
+
+
+
+
+Process finished with exit code 0
