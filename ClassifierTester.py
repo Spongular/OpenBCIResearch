@@ -133,7 +133,7 @@ class ClassifierTester:
                      ('imaginary', 'hf'): 4}
 
         #Misc attributes
-        self.sub_data_list = []
+        self.sub_dict = {}
         self.sk_test = False
         self.nn_test = False
         self.callbacks = callbacks
@@ -148,7 +148,7 @@ class ClassifierTester:
                 r1 = 1
                 r2 = 110
                 print("Selecting {src} data for all subjects".format(src=data_source))
-            elif subj_range[0] > 0 and subj_range[1] < 110 and subj_range[0] < subj_range[1]:
+            elif subj_range[0] > 0 and subj_range[1] < 111 and subj_range[0] < subj_range[1]:
                 r1 = subj_range[0]
                 r2 = subj_range[1]
                 print("Selecting {src} data for subjects {start} to {stop}...".format(src=data_source,
@@ -157,8 +157,12 @@ class ClassifierTester:
             else:
                 raise Exception(
                     "Error, subj_range is invalid. Ensure it is two values between 1 and 109, with the first being smaller")
+            #Now, we transform the range to a list and remove the bad subjects.
+            sub_key_list = list(range(r1, r2))
+            ignore_list = (38, 80, 89, 92, 100, 104)
+            sub_key_list = list(set(sub_key_list) - set(ignore_list))
             # Now, iterate through the subjects, filter and epoch each, and pair the data and labels in an ordered list.
-            for sub in range(r1, r2):
+            for sub in sub_key_list:
                 raw = data_loading.get_single_mi(sub, type_dict[(type, stim_select)])
                 if filter_bounds[1] is None:
                     raw = gen_tools.preprocess_highpass(raw, min=filter_bounds[0])
@@ -166,7 +170,8 @@ class ClassifierTester:
                     raw = gen_tools.preprocess_bandpass(raw, min=filter_bounds[0], max=filter_bounds[1])
                 data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=ch_list)
                 del epochs
-                self.sub_data_list.append([data, labels])
+                self.sub_dict[sub] = {'data': data,
+                                      'labels': labels}
 
         elif data_source == 'live-movement':
             # Define our subject range for iteration
@@ -211,7 +216,8 @@ class ClassifierTester:
                 epochs = dloader.epochs
                 data = epochs.get_data()
                 labels = epochs.events[:, -1] - 2
-                self.sub_data_list.append([data, labels])
+                self.sub_dict[sub] = {'data': data,
+                                      'labels': labels}
 
         elif data_source == 'live-imagined':
             raise Exception("'live-imagined' Not Yet Implemented")
@@ -222,9 +228,9 @@ class ClassifierTester:
                 "Error: 'data_source' must be one of 'physionet', 'mamem-ssvep', 'live-imagined' or 'live-movement'")
 
         if slice_count > 1:
-            for ind, sub in enumerate(self.sub_data_list):
+            for key, sub in self.sub_dict.items():
                 #for each subject, we perform the slice on their data.
-                self.sub_data_list[ind] = gen_tools.slice_data(sub[0], sub[1], slice_count)
+                self.sub_dict[key] = gen_tools.slice_data(sub['data'], sub['labels'], slice_count)
 
         # Set the metrics
         self.result_metrics = {}
@@ -276,7 +282,7 @@ class ClassifierTester:
             print("Performing Gridsearch on compatible pipelines to find optimal parameters...")
             if gridsearch > 1 or gridsearch <= 0:
                 raise Exception("Error: 'gridsearch' must be a value between 0 and 1, or None")
-            pool_size = round(len(self.sub_data_list) * gridsearch)
+            pool_size = round(len(self.sub_dict) * gridsearch)
             self.__gridsearch_params(pool_size=pool_size)
         else:
             #Without a gridsearch, we just fill the class dictionary with the classifiers set to default.
@@ -327,16 +333,16 @@ class ClassifierTester:
         self.sk_dict = {}
 
         # Form the data randomly.
-        sub_pool = list(range(0, len(self.sub_data_list)))
+        sub_pool = list(self.sub_dict.keys())
         random.shuffle(sub_pool)
         val = sub_pool.pop()
-        data = self.sub_data_list[val][0]
-        labels = self.sub_data_list[val][1]
+        data = self.sub_dict[val]['data']
+        labels = self.sub_dict[val]['labels']
         for val in range(0, pool_size - 1):
             val = sub_pool.pop()
-            data = np.concatenate((data, self.sub_data_list[val][0]),
+            data = np.concatenate((data, self.sub_dict[val]['data']),
                                   axis=0)
-            labels = np.concatenate((labels, self.sub_data_list[val][1]),
+            labels = np.concatenate((labels, self.sub_dict[val]['labels']),
                                     axis=0)
 
         # Generate the classifiers to test.
@@ -351,7 +357,7 @@ class ClassifierTester:
             self.sk_dict[pipe[0]] = grid.best_estimator_
         return
 
-    def __perform_gridsearch(self, classifier, parameters, data, labels, n_jobs, verbose=0, cross_val=3):
+    def __perform_gridsearch(self, classifier, parameters, data, labels, n_jobs, verbose=0, cross_val=5):
         # Here, we make use of the CVGridsearch method to check the
         # various combinations of parameters for the best result.
         print("Performing GridSearchCV to find optimal parameter set...")
@@ -423,7 +429,7 @@ class ClassifierTester:
                 return self.nn_dict
 
         if d_shape is None:
-            data_shape = self.sub_data_list[0][0].shape + (d_fourth_axis,)
+            data_shape = self.sub_dict[0]['data'].shape + (d_fourth_axis,)
         else:
             data_shape = d_shape
         models = [self.__eegnet(data_shape=data_shape, chan=data_shape[1]),
@@ -581,7 +587,7 @@ class ClassifierTester:
             'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
             'MDM__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
         }
-        return ("MDM", clf, parameters)
+        return "MDM", clf, parameters
 
     def __ts_lr(self):
         print("Generating TS-LR classifier pipeline...")
@@ -594,7 +600,7 @@ class ClassifierTester:
             'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
             'TS__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
         }
-        return ("TS-LR", clf, parameters)
+        return "TS-LR", clf, parameters
 
     def __covcsp_lda(self, max_n_filters=10):
         print("Generating CovCSP-LDA classifier pipeline...")
@@ -613,7 +619,7 @@ class ClassifierTester:
             'CSP__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'),
             'LDA__solver': ('svd', 'lsqr', 'eigen')
         }
-        return ("CovCSP-LDA", clf, parameters)
+        return "CovCSP-LDA", clf, parameters
 
     def __covcsp_lr(self, max_n_filters=10):
         print("Generating CovCSP-LR classifier pipeline...")
@@ -631,7 +637,7 @@ class ClassifierTester:
             'CSP__nfilter': range(2, max_n_filters),
             'CSP__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
         }
-        return ("CovCSP-LR", clf, parameters)
+        return "CovCSP-LR", clf, parameters
 
     ##------------------------------------------------------------------------------------------------------------------
     ##Filter-Bank and MOABB Classifiers
@@ -681,14 +687,14 @@ class ClassifierTester:
             'callbacks' : callbacks
         }
 
-        return ("eegnet", model, fit_dict)
+        return "eegnet", model, fit_dict
 
     #Fusion Convolutional Neural Network for Cross-Subject EEG Motor Imagery Classification
     #Available at: https://research.tees.ac.uk/en/publications/fusion-convolutional-neural-network-for-cross-subject-eeg-motor-i
     def __fusion_eegnet(self, data_shape, dropout=0.5, chan=4, n_classes=2, lr_scheduler=True, check_p=False):
         model = None
         fit_dict = None
-        return ("fusion_eegnet", model, fit_dict)
+        return "fusion_eegnet", model, fit_dict
 
     ##------------------------------------------------------------------------------------------------------------------
     ##Testing Methods
@@ -715,17 +721,10 @@ class ClassifierTester:
         self.__print("    nn_test = {nn}, nn_select = {nns}\n".format(nn=nn_test, nns=nn_select))
         self.__print("    cross_val_times = {cvt}\n".format(cvt=cross_val_times))
 
-        #Find the subject offset.
-        if self.subj_range is not None:
-            sub_offset = self.subj_range[0]
-        else:
-            sub_offset = 1
-
-        rand_state = random.randint(0, 99999)
-        for sub in range(0, len(self.sub_data_list)):
-            self.__print("--Subj No. {n}: \n".format(n=sub + sub_offset))
+        for key, sub in self.sub_dict.items():
+            self.__print("--Subj No. {n}: \n".format(n=key))
             # Perform the cross validation.
-            results = self.__stratified_cross_val(self.sub_data_list[sub][0], self.sub_data_list[sub][1],
+            results = self.__stratified_cross_val(sub['data'], sub['labels'],
                                                   cross_val_times)
             self.__print_average_results(results=results)
         return
@@ -853,7 +852,7 @@ class ClassifierTester:
 
         return results
 
-    def __stratified_cross_val(self, data, labels, cv=10):
+    def __stratified_cross_val(self, data, labels, cv=5):
         #Initialise the result dictionary.
         #will be in form 'Classifier Name' : 'Cross Validation Results'
         results = {}
@@ -876,21 +875,21 @@ class ClassifierTester:
 
     def __train_test_classifiers(self, batch_size, cross_val_times, test_split):
         # Create our randomised set of subjects
-        subjects = list(range(0, len(self.sub_data_list)))
+        subjects = list(self.sub_dict.keys())
         random.shuffle(subjects)
         subjects = subjects[:batch_size]
 
         # Combine and randomise the data from subjects.
         cur_sub = subjects.pop()
-        data = self.sub_data_list[cur_sub][0]
-        labels = self.sub_data_list[cur_sub][1]
+        data = self.sub_dict[cur_sub]['data']
+        labels = self.sub_dict[cur_sub]['labels']
         while len(subjects) > 0:
             cur_sub = subjects.pop()
             data = np.concatenate(
-                (data, self.sub_data_list[cur_sub][0]),
+                (data, self.sub_dict[cur_sub]['data']),
                 axis=0)
             labels = np.concatenate(
-                (labels, self.sub_data_list[cur_sub][1]),
+                (labels, self.sub_dict[cur_sub]['labels']),
                 axis=0)
         data, labels = shuffle(data, labels)
 
@@ -901,7 +900,7 @@ class ClassifierTester:
 
     def __split_subject_train_test_classifiers(self, batch_size, cross_val_times, test_split):
         # Create our randomised set of subjects
-        subjects = list(range(0, len(self.sub_data_list)))
+        subjects = list(self.sub_dict.keys())
         random.shuffle(subjects)
         subjects = subjects[:batch_size]
 
@@ -922,14 +921,14 @@ class ClassifierTester:
 
             #Grab our test data by using the test indices.
             cur_sub = test_indices[0]
-            data_test = self.sub_data_list[cur_sub][0]
-            labels_test = self.sub_data_list[cur_sub][1]
+            data_test = self.sub_dict[cur_sub]['data']
+            labels_test = self.sub_dict[cur_sub]['labels']
             for z in test_indices[1:]:
                 data_test = np.concatenate(
-                    (data_test, self.sub_data_list[z][0]),
+                    (data_test, self.sub_dict[z]['data']),
                     axis=0)
                 labels_test = np.concatenate(
-                    (labels_test, self.sub_data_list[z][1]),
+                    (labels_test, self.sub_dict[z]['labels']),
                     axis=0)
 
             #Create a list of training indices that is the difference between subjects and test indices
@@ -940,15 +939,15 @@ class ClassifierTester:
 
             # Fill training data with the rest
             cur_sub = train_indices.pop()
-            data_train = self.sub_data_list[cur_sub][0]
-            labels_train = self.sub_data_list[cur_sub][1]
+            data_train = self.sub_dict[cur_sub]['data']
+            labels_train = self.sub_dict[cur_sub]['labels']
             while len(subjects) > 0 and len(train_indices) > 0:
                 cur_sub = train_indices.pop()
                 data_train = np.concatenate(
-                    (data_train, self.sub_data_list[cur_sub][0]),
+                    (data_train, self.sub_dict[cur_sub]['data']),
                     axis=0)
                 labels_train = np.concatenate(
-                    (labels_train, self.sub_data_list[cur_sub][1]),
+                    (labels_train, self.sub_dict[cur_sub]['labels']),
                     axis=0)
 
             # Randomise them both.
@@ -977,8 +976,8 @@ class ClassifierTester:
 print(mne.get_config('MNE_LOGGING_LEVEL'))
 mne.set_config('MNE_LOGGING_LEVEL', 'warning')
 print(mne.get_config('MNE_LOGGING_LEVEL'))
-test = ClassifierTester(subj_range=[1, 11],data_source='physionet', stim_select='hf', type='imaginary',
+test = ClassifierTester(subj_range=[1, 110],data_source='physionet', stim_select='hf', type='imaginary',
                         gridsearch=None, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'], random_state=42)
-print(test.sub_data_list[0][0].shape)
+print(test.sub_dict[1]['data'].shape)
 test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=10)
 #test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False)
