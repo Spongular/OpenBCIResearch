@@ -47,11 +47,11 @@ from pyriemann.spatialfilters import CSP as CovCSP
 
 # sklearn imports
 from sklearn import svm
-from sklearn.feature_selection import VarianceThreshold
+from sklearn.feature_selection import VarianceThreshold, SelectKBest, mutual_info_classif
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import StratifiedKFold, train_test_split, GridSearchCV, cross_validate
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.linear_model import LogisticRegression
 from sklearn.utils import shuffle
@@ -62,6 +62,9 @@ from sklearn_genetic.callbacks import ConsecutiveStopping, DeltaThreshold
 # keras imports
 from tensorflow.python.keras.callbacks import ModelCheckpoint, LearningRateScheduler
 from tensorflow.keras.utils import to_categorical
+
+#MOABB imports
+from moabb.pipelines.utils import FilterBank
 
 
 class ClassifierTester:
@@ -514,23 +517,30 @@ class ClassifierTester:
         #Not exactly pretty looking, but it works, and this isn't an intensive operation so efficiency isn't important.
         pipelines = []
         for classifier_name, parameters in parameter_dict.items():
-            if classifier_name == 'CSP-LDA':
-                pipe = self.__csp_lda(params=parameters)
-            elif classifier_name == 'CSP-SVM':
-                pipe = self.__csp_svm(params=parameters)
-            elif classifier_name == 'CSP-KNN':
-                pipe = self.__csp_knn(params=parameters)
-            elif classifier_name == 'MDM':
-                pipe = self.__mdm(params=parameters)
-            elif classifier_name == 'TS-LR':
-                pipe = self.__ts_lr(params=parameters)
-            elif classifier_name == 'CovCSP-LDA':
-                pipe = self.__covcsp_lda(params=parameters)
-            elif classifier_name == 'CovCSP-LR':
-                pipe = self.__covcsp_lr(params=parameters)
+            if self.filter_bank is False:
+                if classifier_name == 'CSP-LDA':
+                    pipe = self.__csp_lda(params=parameters)
+                elif classifier_name == 'CSP-SVM':
+                    pipe = self.__csp_svm(params=parameters)
+                elif classifier_name == 'CSP-KNN':
+                    pipe = self.__csp_knn(params=parameters)
+                elif classifier_name == 'MDM':
+                    pipe = self.__mdm(params=parameters)
+                elif classifier_name == 'TS-LR':
+                    pipe = self.__ts_lr(params=parameters)
+                elif classifier_name == 'CovCSP-LDA':
+                    pipe = self.__covcsp_lda(params=parameters)
+                elif classifier_name == 'CovCSP-LR':
+                    pipe = self.__covcsp_lr(params=parameters)
+                else:
+                    raise Exception("Error: Parameter 'parameter_dict' contains an invalid key. Keys can only include"
+                                    "'CSP-LDA', 'CSP-SVM', 'CSP-KNN', 'MDM', 'TS-LR', 'CovCSP-LDA' or 'CovCSP-LR'.")
             else:
-                raise Exception("Error: Parameter 'parameter_dict' contains an invalid key. Keys can only include"
-                                "'CSP-LDA', 'CSP-SVM', 'CSP-KNN', 'MDM', 'TS-LR', 'CovCSP-LDA' or 'CovCSP-LR'.")
+                if classifier_name == 'FBCSP-SVM':
+                    pipe = self.__fbcsp_svm(params=parameters)
+                else:
+                    raise Exception("Error: Parameter 'parameter_dict' contains an invalid key. Keys can only include"
+                                    "'FBCSP-SVM' while class parameter 'filter_bank' is True.")
             pipelines.append(pipe)
         return pipelines
 
@@ -545,15 +555,18 @@ class ClassifierTester:
                 return self.sk_dict
 
         if parameter_dict is None:
-            pipelines = [self.__csp_knn(),
-                         self.__csp_svm(),
-                         self.__csp_lda(),
-                         self.__mdm(),
-                         self.__ts_lr(),
-                         self.__covcsp_lda(),
-                         self.__covcsp_lr()]
+            if self.filter_bank is False:
+                pipelines = [self.__csp_knn(),
+                             self.__csp_svm(),
+                             self.__csp_lda(),
+                             self.__mdm(),
+                             self.__ts_lr(),
+                             self.__covcsp_lda(),
+                             self.__covcsp_lr()]
+            else:
+                pipelines = [self.__fbcsp_svm()]
         else:
-            pipelines = self.__gen_sklearn_pipelines_from_dict(parameter_dict)
+            pipelines = self.__generate_sklearn_pipelines_from_dict(parameter_dict)
 
         for pipe in pipelines:
             self.sk_dict[pipe[0]] = pipe[1]
@@ -884,7 +897,31 @@ class ClassifierTester:
     ##------------------------------------------------------------------------------------------------------------------
 
     #For filter bank, we need the data in the form (trial, channel, times, filter).
-
+    def __fbcsp_svm(self, params):
+        #This one is pretty simple, and we don't change up many parameters.
+        #Additionally, the
+        if params is None:
+            fb = FilterBank(make_pipeline(Covariances(estimator="oas"), CSP(nfilter=4)))
+            kb = SelectKBest(score_func=mutual_info_classif, k=10)
+            svc = svm.SVC(kernel="linear")
+        elif type(params) is dict:
+            fb = FilterBank(make_pipeline(Covariances(estimator="oas"), CSP(nfilter=4)))
+            kb = SelectKBest(score_func=mutual_info_classif, k=10)
+            svc = svm.SVC(C=params['SVC__C'], gamma=params['SVC__gamma'])
+        else:
+            raise Exception("Error: Parameter 'params' must be of type 'dict'.")
+        clf = Pipeline([('FB', fb), ('KB', kb), ('SVC', svc)])
+        if self.p_select == 'genetic':
+            parameters = {
+                'SVC__C': Continuous(0.00001, 100000, distribution='uniform'),
+                'SVC__gamma': Continuous(0.00001, 100000, distribution='uniform')
+            }
+        else:
+            parameters = {
+                'SVC__C': np.logspace(-5, 5, 10).tolist(),
+                'SVC__gamma': np.logspace(-5, 5, 10).tolist()
+            }
+        return "FBCSP-SVM", clf, parameters
 
     ##------------------------------------------------------------------------------------------------------------------
     ##Neural Networks
