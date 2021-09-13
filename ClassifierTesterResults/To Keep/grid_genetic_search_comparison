@@ -1,0 +1,48 @@
+"C:\Program Files (x86)\Microsoft Visual Studio\Shared\Python37_64\python.exe" E:/PycharmProjects/OpenBCIResearch/MNEMotorImageryExample.py
+2021-09-11 19:35:13.136003: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'cudart64_110.dll'; dlerror: cudart64_110.dll not found
+2021-09-11 19:35:13.136208: I tensorflow/stream_executor/cuda/cudart_stub.cc:29] Ignore above cudart dlerror if you do not have a GPU set up on your machine.
+(450, 64, 641)
+(450,)
+(450, 64, 641)
+Generating PCA-LDA classifier pipeline...
+LDA Classification accuracy: 0.542222 / Chance level: 0.504444
+Generating PCA-LDA classifier pipeline...
+Performing GASearchCV to find optimal parameter set...
+gen	nevals	fitness 	fitness_std	fitness_max	fitness_min
+0  	10    	0.553111	0.0325     	0.606667   	0.5
+1  	17    	0.589111	0.0243118  	0.606667   	0.54
+2  	15    	0.600444	0.0040734  	0.606667   	0.597778
+3  	17    	0.604444	0.00358323 	0.606667   	0.597778
+4  	19    	0.606667	0          	0.606667   	0.606667
+5  	19    	0.606667	0          	0.606667   	0.606667
+6  	20    	0.606667	0          	0.606667   	0.606667
+7  	20    	0.606667	0          	0.606667   	0.606667
+8  	19    	0.606667	0          	0.606667   	0.606667
+9  	19    	0.606667	0          	0.606667   	0.606667
+INFO: ConsecutiveStopping callback met its criteria
+INFO: Stopping the algorithm
+GASearchCV completed in 1843.561s (30mins)
+Displaying Results...
+Best score: 0.607
+Best parameters set:
+	CSP__cov_est: 'concat'
+	CSP__n_components: 10
+	CSP__norm_trace: False
+	LDA__solver: 'lsqr'
+	VAR__threshold: 0.010603080280040311
+
+
+
+Generating PCA-LDA classifier pipeline...
+Performing GridSearchCV to find optimal parameter set...
+GridSearchCV completed in 13818.175s (230mins/3hrs50mins)
+Displaying Results...
+Best score: 0.616
+Best parameters set:
+	CSP__cov_est: 'concat'
+	CSP__n_components: 6
+	CSP__norm_trace: False
+	LDA__solver: 'svd'
+	VAR__threshold: 0.0
+
+Process finished with exit code 0

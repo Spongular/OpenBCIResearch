@@ -13,7 +13,7 @@ import keras_classifiers
 from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 import numpy as np
-from keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical
 from keras import models
 from mne.datasets.eegbci import eegbci
 from keras import backend
@@ -26,7 +26,7 @@ backend.clear_session()
 mne.set_log_level('WARNING')
 
 #load our data.
-raw = data_loading.get_all_mi_between(1, 110, 1, ["38", "088", "89", "092", "100", "104"])
+raw = data_loading.get_all_mi_between(1, 2, 1, ["38", "088", "89", "092", "100", "104"])
 
 #Run a Highpass filter to get rid of low-frequency drift and other issues.
 #This isn't specified in the paper, but is common practice and thus assumed.

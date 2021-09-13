@@ -19,6 +19,7 @@ from sklearn.feature_selection import VarianceThreshold
 from sklearn.pipeline import Pipeline
 from sklearn_genetic import GASearchCV
 from sklearn_genetic.space import Categorical, Integer, Continuous
+from sklearn_genetic.callbacks import ConsecutiveStopping, DeltaThreshold
 from time import time
 
 mne.set_log_level('WARNING')
@@ -39,14 +40,13 @@ def csp_lda(max_csp_components=10):
         'CSP__n_components': range(2, max_csp_components + 1),
         'CSP__cov_est': ('concat', 'epoch'),
         'CSP__norm_trace': (True, False),
-        'VAR__threshold': ((.9 * (1 - .9)), (.85 * (1 - .85)), (.8 * (1 - .8)),
-                           (.75 * (1 - .75)))
+        'VAR__threshold': np.linspace(start=0, stop=0.1, num=15)
     }
     return "CSP-LDA", clf, parameters
 
 #Select the hands & feet tests.
 files = []
-for a in range(1, 2):
+for a in range(1, 11):
     num = "{0:03}".format(a)
     files += ["EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R03.edf",
               "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R07.edf",
@@ -123,12 +123,13 @@ ga_parameters = {
     'VAR__threshold': Continuous(0, 0.1, distribution='uniform')
 }
 grid_search = GASearchCV(estimator=clf,
-                          cv=cv,
-                          scoring='accuracy',
-                          param_grid=ga_parameters,
-                          n_jobs=2,
-                          verbose=True)
-grid_search.fit(epochs_data, labels)
+                         cv=cv,
+                         scoring='accuracy',
+                         param_grid=ga_parameters,
+                         n_jobs=2,
+                         verbose=True)
+callback = ConsecutiveStopping(generations=5, metric='fitness')
+grid_search.fit(epochs_data, labels, callbacks=callback)
 print("GASearchCV completed in %0.3fs" % (time() - t0))
 
 # And print out our results.

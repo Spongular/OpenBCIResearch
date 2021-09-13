@@ -6,13 +6,13 @@ import sys
 import tensorflow
 from keras.callbacks import TensorBoard
 import numpy as np
-from keras.models import Sequential, clone_model, Model
-from keras.layers import Dense, Dropout, Input, Activation, SpatialDropout2D, DepthwiseConv2D, AveragePooling2D
-from keras.layers import Flatten, Conv2D, MaxPooling2D, LSTM, SeparableConv2D
-from keras.layers import BatchNormalization, Conv3D, MaxPooling3D, Permute, concatenate
-from keras.utils import to_categorical
-from keras.optimizers import Adam
-from keras.constraints import max_norm
+from tensorflow.keras.models import Sequential, clone_model, Model
+from tensorflow.keras.layers import Dense, Dropout, Input, Activation, SpatialDropout2D, DepthwiseConv2D, AveragePooling2D
+from tensorflow.keras.layers import Flatten, Conv2D, MaxPooling2D, LSTM, SeparableConv2D
+from tensorflow.keras.layers import BatchNormalization, Conv3D, MaxPooling3D, Permute, concatenate
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.constraints import max_norm
 from sklearn.model_selection import StratifiedKFold
 
 

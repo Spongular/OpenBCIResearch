@@ -9,7 +9,7 @@ from mne.channels import make_standard_montage
 from mne.decoding import CSP, Scaler, UnsupervisedSpatialFilter, Vectorizer
 from mne.datasets.eegbci import eegbci
 from mne.time_frequency import psd_welch, psd_multitaper, tfr_morlet, tfr_multitaper, tfr_stockwell
-from keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical
 from mne.io import read_raw_edf
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn import svm

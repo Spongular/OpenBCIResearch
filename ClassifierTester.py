@@ -52,10 +52,13 @@ from sklearn.pipeline import Pipeline
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.linear_model import LogisticRegression
 from sklearn.utils import shuffle
+from sklearn_genetic import GASearchCV
+from sklearn_genetic.space import Categorical, Integer, Continuous
+from sklearn_genetic.callbacks import ConsecutiveStopping, DeltaThreshold
 
 # keras imports
 from tensorflow.python.keras.callbacks import ModelCheckpoint, LearningRateScheduler
-from keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical
 
 
 class ClassifierTester:
@@ -87,10 +90,23 @@ class ClassifierTester:
                             naming the metrics, by default only being 'acc' for accuracy. Other metrics include 'f1'
                             for f1 score, 'rec' for recall, 'prec' for precision and 'roc' for ROC-AUC.
 
-        gridsearch      :   Indicates whether a gridsearch will be performed on a subset of the chosen subject pool to
-                            refine parameters. If 'gridsearch' = None, so search occurs, otherwise gridsearch should be
-                            a decimal between 0 and 1 inclusive to indicate the size of the subset to perform the search
-                            on. It is recommended to use a small subset so as to save time, as gridsearch is time-intensive.
+        p_select        :   Indicates whether a search will be performed on a subset of the chosen subject pool to
+                            refine parameters. If 'p_select' = None, no parameter selection is done and the default
+                            parameters are used. In most cases, these are the sk-learn defaults.
+                            If 'p_select' = 'gridsearch', a normal gridsearch will be performed using sk-learn's
+                            GridSearchCV method. If 'p_select' = 'genetic', the sklearn-genetic-opt method
+                            GASearchCV will be used.
+                            Gridsearch is exhaustive, and guaranteed to find the best parameter sets, but takes
+                            excessive amounts of time. The genetic algorithm is not exhaustive and makes use of early
+                            stopping, making it far quicker but not guaranteed to find the best parameter set.
+
+        p_select_frac   :   Indicates the fraction of subjects to perform the parameter selection process on.
+                            'p_select_frac' should be a decimal between 0 and 1 inclusive. It is recommended to use a
+                            small subset so as to save time, as parameter selection is time-intensive.
+
+        p_n_jobs        :   Indicates the number of threads used in gridsearch/genetic algorithms for parameter
+                            selection. Should be an integer from 1 to the total core/thread limit of the system, or
+                            -1 to simply use all available.
 
         file            :   Indicates the filepath to write results to. If 'file' = None, a new file will be generated
                             in the folder 'ClassifierTesterResults' with a name indicating the data tested and the
@@ -121,7 +137,7 @@ class ClassifierTester:
     """
 
     def __init__(self, data_source='physionet', type='movement', stim_select='lr', subj_range=None, result_metrics=["acc"],
-                 gridsearch=None, file=None, filter_bounds=[6., 30.], tmin=0., tmax=4., ch_list=[], slice_count=1,
+                 p_select=None, p_select_frac=0.1, p_n_jobs=2, file=None, filter_bounds=[6., 30.], tmin=0., tmax=4., ch_list=[], slice_count=1,
                  callbacks=False, live_layout='headband', avg=True, random_state=1):
 
         mne.set_log_level('warning')
@@ -159,7 +175,7 @@ class ClassifierTester:
                     "Error, subj_range is invalid. Ensure it is two values between 1 and 109, with the first being smaller")
             #Now, we transform the range to a list and remove the bad subjects.
             sub_key_list = list(range(r1, r2))
-            ignore_list = (38, 80, 89, 92, 100, 104)
+            ignore_list = (38, 80, 88, 89, 92, 100, 104)
             sub_key_list = list(set(sub_key_list) - set(ignore_list))
             # Now, iterate through the subjects, filter and epoch each, and pair the data and labels in an ordered list.
             for sub in sub_key_list:
@@ -278,12 +294,20 @@ class ClassifierTester:
         # For this, we use 20% of the subject pool selected randomly.
         self.sk_dict = {}
         self.nn_dict = {}
-        if gridsearch is not None:
-            print("Performing Gridsearch on compatible pipelines to find optimal parameters...")
-            if gridsearch > 1 or gridsearch <= 0:
-                raise Exception("Error: 'gridsearch' must be a value between 0 and 1, or None")
-            pool_size = round(len(self.sub_dict) * gridsearch)
-            self.__gridsearch_params(pool_size=pool_size)
+        self.p_select = p_select
+        self.p_n_jobs = p_n_jobs
+        if self.p_select is not None:
+            if self.p_select == 'gridsearch':
+                print("Performing Gridsearch on compatible pipelines to find optimal parameters...")
+            elif self.p_select == 'genetic':
+                print("Performing Genetic search on compatible pipelines to find optimal parameters...")
+            if p_select_frac > 1 or p_select_frac <= 0:
+                raise Exception("Error: 'p_select_frac' must be a value between 0 and 1, or None")
+            if p_select_frac is None:
+                pool_size = len(self.sub_dict)
+            else:
+                pool_size = round(len(self.sub_dict) * p_select_frac)
+            self.__gridsearch_params(pool_size=pool_size, n_jobs=self.p_n_jobs)
         else:
             #Without a gridsearch, we just fill the class dictionary with the classifiers set to default.
             pipelines = self.__generate_pipelines()
@@ -309,7 +333,7 @@ class ClassifierTester:
         else:
             self.__print("    Subject Range = {sub_r}\n".format(sub_r=subj_range))
         self.__print("    Result Metrics = {format}\n".format(format=result_metrics))
-        self.__print("    Gridsearch = {grd}".format(grd=gridsearch))
+        self.__print("    Gridsearch = {grd}".format(grd=p_select))
         self.__print("    Filter Bounds = {flt}\n".format(flt=filter_bounds))
         self.__print("    tmin = {min}, tmax = {max}\n".format(min=tmin, max=tmax))
         if ch_list == []:
@@ -328,7 +352,7 @@ class ClassifierTester:
     ##Gridsearch Tools
     ##------------------------------------------------------------------------------------------------------------------
 
-    def __gridsearch_params(self, pool_size):
+    def __gridsearch_params(self, pool_size, n_jobs=2):
         # Generate the dictionary.
         self.sk_dict = {}
 
@@ -351,13 +375,18 @@ class ClassifierTester:
         # Perform a gridsearch for each.
         for pipe in pipelines:
             print("\nPerforming gridsearch on pipeline: {pipe}".format(pipe=pipe[0]))
-            grid = self.__perform_gridsearch(pipe[1], pipe[2], data, labels, n_jobs=2, cross_val=5)
+            if self.p_select == 'gridsearch':
+                grid = self.__perform_gridsearch(pipe[1], pipe[2], data, labels, n_jobs=n_jobs, cross_val=5)
+            elif self.p_select == 'genetic':
+                grid = self.__perform_genetic(pipe[1], pipe[2], data, labels, n_jobs=n_jobs, cross_val=5)
+            else:
+                raise Exception("Error: parameter 'p_select' must be either None, 'gridsearch' or 'genetic'")
 
             # Add the best estimator to the dictionary using the name as a key.
             self.sk_dict[pipe[0]] = grid.best_estimator_
         return
 
-    def __perform_gridsearch(self, classifier, parameters, data, labels, n_jobs, verbose=0, cross_val=5):
+    def __perform_gridsearch(self, classifier, parameters, data, labels, n_jobs=2, verbose=0, cross_val=5):
         # Here, we make use of the CVGridsearch method to check the
         # various combinations of parameters for the best result.
         print("Performing GridSearchCV to find optimal parameter set...")
@@ -375,11 +404,37 @@ class ClassifierTester:
             print("\t%s: %r" % (param_name, best_parameters[param_name]))
         return grid_search
 
+    def __perform_genetic(self, classifier, parameters, data, labels, n_jobs=2, verbose=False, cross_val=5):
+        #First, we make the validators and callbacks
+        cv = StratifiedKFold(n_splits=cross_val, shuffle=True, random_state=self.random_state)
+        callback = ConsecutiveStopping(generations=5, metric='fitness')
+
+        #Perform the genetic search
+        print("Performing GASearchCV to find optimal parameter set...")
+        t0 = time()
+        genetic_search = GASearchCV(estimator=classifier,
+                                 cv=cv,
+                                 scoring='accuracy',
+                                 param_grid=parameters,
+                                 n_jobs=n_jobs,
+                                 verbose=verbose)
+        genetic_search.fit(data, labels, callbacks=callback)
+        print("GASearchCV completed in %0.3fs" % (time() - t0))
+
+        #Now, print the results
+        print("Displaying Results...")
+        print("Best score: %0.3f" % genetic_search.best_score_)
+        print("Best parameters set:")
+        best_parameters = genetic_search.best_estimator_.get_params()
+        for param_name in sorted(parameters.keys()):
+            print("\t%s: %r" % (param_name, best_parameters[param_name]))
+        return genetic_search
+
     ##------------------------------------------------------------------------------------------------------------------
     ##General Tools
     ##------------------------------------------------------------------------------------------------------------------
 
-    def __generate_nueral_networks(self, data_shape):
+    def __generate_neural_networks(self, data_shape):
         #This method will return a tuple of name, compiled NN model and callbacks
         #i.e. format is ("name", model, fit_details)
         models = [self.__eegnet(data_shape=data_shape),
@@ -398,7 +453,33 @@ class ClassifierTester:
                      self.__covcsp_lr()]
         return pipelines
 
-    def initialise_sklearn_classifiers(self):
+    def __generate_pipelines_from_dict(self, parameter_dict):
+        #The parameter dict should be a nested dictionary, of the form dict['classifier'][parameter].
+        #As each classifier has a different generating function, let's just use a list of if statements.
+        #Not exactly pretty looking, but it works, and this isn't an intensive operation so efficiency isn't important.
+        pipelines = []
+        for classifier_name, parameters in parameter_dict.items():
+            if classifier_name == 'CSP-LDA':
+                pipe = self.__csp_lda(params=parameters)
+            elif classifier_name == 'CSP-SVM':
+                pipe = self.__csp_svm(params=parameters)
+            elif classifier_name == 'CSP-KNN':
+                pipe = self.__csp_knn(params=parameters)
+            elif classifier_name == 'MDM':
+                pipe = self.__mdm(params=parameters)
+            elif classifier_name == 'TS-LR':
+                pipe = self.__ts_lr(params=parameters)
+            elif classifier_name == 'CovCSP-LDA':
+                pipe = self.__covcsp_lda(params=parameters)
+            elif classifier_name == 'CovCSP-LR':
+                pipe = self.__covcsp_lr(params=parameters)
+            else:
+                raise Exception("Error: Parameter 'parameter_dict' contains an invalid key. Keys can only include"
+                                "'CSP-LDA', 'CSP-SVM', 'CSP-KNN', 'MDM', 'TS-LR', 'CovCSP-LDA' or 'CovCSP-LR'.")
+            pipelines.append(pipe)
+        return pipelines
+
+    def initialise_sklearn_classifiers(self, parameter_dict=None):
         #This will create sklearn-based classifiers with default parameters
         #that are determined by examples provided in the documentation for
         #MNE and PyRiemann libraries.
@@ -408,13 +489,17 @@ class ClassifierTester:
             if cont is False:
                 return self.sk_dict
 
-        pipelines = [self.__csp_knn(),
-                     self.__csp_svm(),
-                     self.__csp_lda(),
-                     self.__mdm(),
-                     self.__ts_lr(),
-                     self.__covcsp_lda(),
-                     self.__covcsp_lr()]
+        if parameter_dict is None:
+            pipelines = [self.__csp_knn(),
+                         self.__csp_svm(),
+                         self.__csp_lda(),
+                         self.__mdm(),
+                         self.__ts_lr(),
+                         self.__covcsp_lda(),
+                         self.__covcsp_lr()]
+        else:
+            pipelines = self.__gen_sklearn_pipelines_from_dict(parameter_dict)
+
         for pipe in pipelines:
             self.sk_dict[pipe[0]] = pipe[1]
         return self.sk_dict
@@ -492,26 +577,42 @@ class ClassifierTester:
     #   https://mne.tools/dev/auto_examples/decoding/decoding_csp_eeg.html
     #   https://scikit-learn.org/stable/supervised_learning.html
 
-    def __csp_lda(self, max_csp_components=10):
+    def __csp_lda(self, max_csp_components=10, params=None):
         print("Generating PCA-LDA classifier pipeline...")
         # Assemble classifiers
-        lda = LinearDiscriminantAnalysis()
-        var = VarianceThreshold(threshold=(.9 * (1 - .9)))
-        csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
+        if params is None:
+            lda = LinearDiscriminantAnalysis()
+            var = VarianceThreshold(threshold=(.9 * (1 - .9)))
+            csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
+        elif type(params) is dict:
+            lda = LinearDiscriminantAnalysis(solver=params['LDA__solver'])
+            var = VarianceThreshold(threshold=params['VAR__threshold'])
+            csp = CSP(n_components=params['CSP__n_components'], reg=None, log=True, norm_trace=False,
+                      cov_est=params['CSP__cov_est'])
+        else:
+            raise Exception("Error: Parameter 'params' must be of type 'dict'.")
+
         # create the pipeline
         clf = Pipeline([('CSP', csp), ('VAR', var), ('LDA', lda)])
         # Form the parameter dictionary
-        parameters = {
-            'LDA__solver': ('svd', 'lsqr', 'eigen'),
-            'CSP__n_components': range(2, max_csp_components + 1),
-            'CSP__cov_est': ('concat', 'epoch'),
-            'CSP__norm_trace': (True, False),
-            'VAR__threshold': ((.9 * (1 - .9)), (.85 * (1 - .85)), (.8 * (1 - .8)),
-                               (.75 * (1 - .75)))
-        }
+        if self.p_select == 'genetic':
+            parameters = {
+                'LDA__solver': Categorical(['svd', 'lsqr', 'eigen']),
+                'CSP__n_components': Integer(2, (max_csp_components + 1)),
+                'CSP__cov_est': Categorical(['concat', 'epoch']),
+                'VAR__threshold': Continuous(0, 0.1, distribution='uniform')
+            }
+        else:
+            parameters = {
+                'LDA__solver': ('svd', 'lsqr', 'eigen'),
+                'CSP__n_components': range(2, max_csp_components + 1),
+                'CSP__cov_est': ('concat', 'epoch'),
+                'VAR__threshold': ((.9 * (1 - .9)), (.85 * (1 - .85)), (.8 * (1 - .8)),
+                                   (.75 * (1 - .75)))
+            }
         return "CSP-LDA", clf, parameters
 
-    def __csp_svm(self, n_logspace=10, max_csp_components=10):
+    def __csp_svm(self, n_logspace=10, max_csp_components=10, params=None):
         print("Generating CSP-SVM classifier pipeline...")
         # If our function parameters are invalid, set them right.
         if max_csp_components < 2:  # Components cannot be less than two.
@@ -521,24 +622,40 @@ class ClassifierTester:
             print("Parameter 'n_neighbors' is below 2, setting to default.")
             n_logspace = 10
         # Assemble classifiers
-        svc = svm.SVC()
-        var = VarianceThreshold(threshold=(.9 * (1 - .9)))
-        csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
+        if params is None:
+            svc = svm.SVC()
+            var = VarianceThreshold(threshold=(.9 * (1 - .9)))
+            csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
+        elif type(params) is dict:
+            svc = svm.SVC(gamma=params['SVC__gamma'], C=params['SVC__C'])
+            var = VarianceThreshold(threshold=params['VAR__threshold'])
+            csp = CSP(n_components=params['CSP__n_components'], reg=None, log=True, norm_trace=False,
+                      cov_est=params['CSP__cov_est'])
+        else:
+            raise Exception("Error: Parameter 'params' must be of type 'dict'.")
         # create the pipeline
         clf = Pipeline([('CSP', csp), ('VAR', var), ('SVC', svc)])
         # Form the parameter dictionary
-        parameters = {
-            'SVC__C': np.logspace(start=1, stop=10, num=n_logspace, base=10).tolist(),
-            # 'SVC__kernel': ('linear', 'poly', 'rbf', 'sigmoid'),
-            'CSP__n_components': range(2, max_csp_components + 1),
-            'CSP__cov_est': ('concat', 'epoch'),
-            'CSP__norm_trace': (True, False),
-            'VAR__threshold': ((.9 * (1 - .9)), (.85 * (1 - .85)), (.8 * (1 - .8)),
-                               (.75 * (1 - .75)))
-        }
+        if self.p_select == 'genetic':
+            parameters = {
+                'SVC__C': Continuous(0.001, 1000, distribution='uniform'),
+                'SVC__gamma': Continuous(0.001, 1000, distribution='uniform'),
+                'CSP__n_components': Integer(2, (max_csp_components + 1)),
+                'CSP__cov_est': Categorical(['concat', 'epoch']),
+                'VAR__threshold': Continuous(0, 0.1, distribution='uniform')
+            }
+        else:
+            parameters = {
+                'SVC__C': (0.001, 0.01, 0.1, 1, 10, 100, 1000),
+                'SVC__gamma': (0.001, 0.01, 0.1, 1, 10, 100, 1000),
+                'CSP__n_components': range(2, max_csp_components + 1),
+                'CSP__cov_est': ('concat', 'epoch'),
+                'VAR__threshold': ((.9 * (1 - .9)), (.85 * (1 - .85)), (.8 * (1 - .8)),
+                                   (.75 * (1 - .75)))
+            }
         return "CSP-SVM", clf, parameters
 
-    def __csp_knn(self, max_n_neighbors=4, max_csp_components=10):
+    def __csp_knn(self, max_n_neighbors=4, max_csp_components=10, params=None):
         print("Generating CSP-KNN classifier pipeline...")
         # If our function parameters are invalid, set them right.
         if max_csp_components < 2:  # Components cannot be less than two.
@@ -548,22 +665,39 @@ class ClassifierTester:
             print("Parameter 'n_neighbors' is below 2, setting to default.")
             max_n_neighbors = 4
         # Assemble classifiers
-        knn = KNeighborsClassifier()
-        var = VarianceThreshold(threshold=(.9 * (1 - .9)))
-        csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
+        if params is None:
+            knn = KNeighborsClassifier()
+            var = VarianceThreshold(threshold=(.9 * (1 - .9)))
+            csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
+        elif type(params) is dict:
+            knn = KNeighborsClassifier(n_neighbors=params['KNN__n_neighbors'], weights=params['KNN__weights'])
+            var = VarianceThreshold(threshold=params['VAR__threshold'])
+            csp = CSP(n_components=params['CSP__n_components'], reg=None, log=True, norm_trace=False,
+                      cov_est=params['CSP__cov_est'])
+        else:
+            raise Exception("Error: Parameter 'params' must be of type 'dict'.")
         # create the pipeline
         clf = Pipeline([('CSP', csp), ('VAR', var), ('KNN', knn)])
         # Form the parameter dictionary
-        parameters = {
-            'KNN__n_neighbors': range(2, max_n_neighbors + 1),
-            'KNN__weights': ('uniform', 'distance'),
-            'KNN__algorithm': ('ball_tree', 'kd_tree', 'brute'),
-            'CSP__n_components': range(2, max_csp_components + 1),
-            'CSP__cov_est': ('concat', 'epoch'),
-            'CSP__norm_trace': (True, False),
-            'VAR__threshold': ((.9 * (1 - .9)), (.85 * (1 - .85)), (.8 * (1 - .8)),
-                               (.75 * (1 - .75)))
-        }
+        if self.p_select == 'genetic':
+            parameters = {
+                'KNN__n_neighbors': Integer(2, (max_n_neighbors + 1)),
+                'KNN__weights': Categorical(['uniform', 'distance']),
+                'KNN__algorithm': Categorical(['ball_tree', 'kd_tree', 'brute']),
+                'CSP__n_components': Integer(2, (max_csp_components + 1)),
+                'CSP__cov_est': Categorical(['concat', 'epoch']),
+                'VAR__threshold': Continuous(0, 0.1, distribution='uniform')
+            }
+        else:
+            parameters = {
+                'KNN__n_neighbors': range(2, max_n_neighbors + 1),
+                'KNN__weights': ('uniform', 'distance'),
+                'KNN__algorithm': ('ball_tree', 'kd_tree', 'brute'),
+                'CSP__n_components': range(2, max_csp_components + 1),
+                'CSP__cov_est': ('concat', 'epoch'),
+                'VAR__threshold': ((.9 * (1 - .9)), (.85 * (1 - .85)), (.8 * (1 - .8)),
+                                   (.75 * (1 - .75)))
+            }
         return "CSP-KNN", clf, parameters
 
     ##------------------------------------------------------------------------------------------------------------------
@@ -575,68 +709,119 @@ class ClassifierTester:
     #   https://github.com/NeuroTechX/moabb/tree/master/pipelines
     #   https://neurotechx.github.io/eeg-notebooks/auto_examples/visual_ssvep/02r__ssvep_decoding.html
 
-    def __mdm(self):
+    def __mdm(self, params=None):
         print("Generating MDM classifier pipeline...")
         # Assemble classifier
-        cov = Covariances()
-        mdm = MDM()
+        if params is None:
+            cov = Covariances()
+            mdm = MDM(metric='riemann')
+        elif type(params) is dict:
+            cov = Covariances(estimator=params['COV__estimator'])
+            mdm = MDM(metric='riemann')
+        else:
+            raise Exception("Error: Parameter 'params' must be of type 'dict'.")
         # create the pipeline
         clf = Pipeline([('COV', cov), ('MDM', mdm)])
         # Form the parameter dictionary
-        parameters = {
-            'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
-            'MDM__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
-        }
+        if self.p_select == 'genetic':
+            parameters = {
+                'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'])
+            }
+        else:
+            parameters = {
+                'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr')
+            }
         return "MDM", clf, parameters
 
-    def __ts_lr(self):
+    def __ts_lr(self, params=None):
         print("Generating TS-LR classifier pipeline...")
-        cov = Covariances()
-        ts = TangentSpace()
-        lr = LogisticRegression(max_iter=1000)
+        if params is None:
+            cov = Covariances()
+            ts = TangentSpace()
+            lr = LogisticRegression(max_iter=1000)
+        elif type(params) is dict:
+            cov = Covariances(estimator=params['COV__estimator'])
+            ts = TangentSpace(metric=params['TS__metric'])
+            lr = LogisticRegression(max_iter=1000)
+        else:
+            raise Exception("Error: Parameter 'params' must be of type 'dict'.")
         clf = Pipeline([('COV', cov), ('TS', ts), ('LR', lr)])
         # Form the parameter dictionary
-        parameters = {
-            'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
-            'TS__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
-        }
+        if self.p_select == 'genetic':
+            parameters = {
+                'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'mcd', 'corr']),
+                'TS__metric': Categorical(['riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'])
+            }
+        else:
+            parameters = {
+                'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
+                'TS__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
+            }
         return "TS-LR", clf, parameters
 
-    def __covcsp_lda(self, max_n_filters=10):
+    def __covcsp_lda(self, max_n_filters=10, params=None):
         print("Generating CovCSP-LDA classifier pipeline...")
         # If our function parameters are invalid, set them right.
         if max_n_filters < 2:  # Components cannot be less than two.
             print("Parameter 'max_n_filters' is below 2, setting to default.")
             max_n_filters = 10
-        cov = Covariances()
-        csp = CovCSP(nfilter=4, log=True)
-        lda = LinearDiscriminantAnalysis()
+        if params is None:
+            cov = Covariances()
+            csp = CovCSP(nfilter=4, log=True)
+            lda = LinearDiscriminantAnalysis()
+        elif type(params) is dict:
+            cov = Covariances(estimator=params['COV__estimator'])
+            csp = CovCSP(nfilter=params['CSP__nfilter'], log=True, metric=params['CSP__metric'])
+            lda = LinearDiscriminantAnalysis(solver=params['LDA__solver'])
+        else:
+            raise Exception("Error: Parameter 'params' must be of type 'dict'.")
         clf = Pipeline([('COV', cov), ('CSP', csp), ('LDA', lda)])
         # Form the parameter dictionary
-        parameters = {
-            'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
-            'CSP__nfilter': range(2, max_n_filters),
-            'CSP__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'),
-            'LDA__solver': ('svd', 'lsqr', 'eigen')
-        }
+        if self.p_select == 'genetic':
+            parameters = {
+                'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'mcd', 'corr']),
+                'CSP__nfilter': Integer(2, max_n_filters),
+                'CSP__metric': Categorical(['riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein']),
+                'LDA__solver': Categorical(['svd', 'lsqr', 'eigen'])
+            }
+        else:
+            parameters = {
+                'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
+                'CSP__nfilter': range(2, max_n_filters),
+                'CSP__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'),
+                'LDA__solver': ('svd', 'lsqr', 'eigen')
+            }
         return "CovCSP-LDA", clf, parameters
 
-    def __covcsp_lr(self, max_n_filters=10):
+    def __covcsp_lr(self, max_n_filters=10, params=None):
         print("Generating CovCSP-LR classifier pipeline...")
         # If our function parameters are invalid, set them right.
         if max_n_filters < 2:  # Components cannot be less than two.
             print("Parameter 'max_n_filters' is below 2, setting to default.")
             max_n_filters = 10
-        cov = Covariances()
-        csp = CovCSP(nfilter=4, log=True)
-        lr = LogisticRegression(max_iter=1000)
+        if params is None:
+            cov = Covariances()
+            csp = CovCSP(nfilter=4, log=True)
+            lr = LogisticRegression(max_iter=1000)
+        elif type(params) is dict:
+            cov = Covariances(estimator=params['COV__estimator'])
+            csp = CovCSP(nfilter=params['CSP__nfilter'], log=True, metric=params['CSP__metric'])
+        else:
+            raise Exception("Error: Parameter 'params' must be of type 'dict'.")
         clf = Pipeline([('COV', cov), ('CSP', csp), ('LR', lr)])
         # Form the parameter dictionary
-        parameters = {
-            'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
-            'CSP__nfilter': range(2, max_n_filters),
-            'CSP__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
-        }
+        if self.p_select == 'genetic':
+            parameters = {
+                'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'mcd', 'corr']),
+                'CSP__nfilter': Integer(2, max_n_filters),
+                'CSP__metric': Categorical(['riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'])
+            }
+        else:
+            parameters = {
+                'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
+                'CSP__nfilter': range(2, max_n_filters),
+                'CSP__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
+            }
         return "CovCSP-LR", clf, parameters
 
     ##------------------------------------------------------------------------------------------------------------------
@@ -976,8 +1161,8 @@ class ClassifierTester:
 print(mne.get_config('MNE_LOGGING_LEVEL'))
 mne.set_config('MNE_LOGGING_LEVEL', 'warning')
 print(mne.get_config('MNE_LOGGING_LEVEL'))
-test = ClassifierTester(subj_range=[1, 110],data_source='physionet', stim_select='hf', type='imaginary',
-                        gridsearch=None, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'], random_state=42)
-print(test.sub_dict[1]['data'].shape)
+test = ClassifierTester(subj_range=[1, 110], data_source='physionet', stim_select='hf', type='imaginary',
+                        p_select='genetic', p_select_frac=0.4, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
+                        random_state=42, p_n_jobs=-1)
 test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=10)
 #test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False)
