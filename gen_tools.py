@@ -50,6 +50,28 @@ def preprocess_highpass(raw, min=1., fir_design='firwin', notch_val=60):
     raw.filter(min, None, fir_design=fir_design, skip_by_annotation=('edge', 'bad_acq_skip'))  # Bandpass
     return raw
 
+def process_filter_bank(raw, filters, tmin=0., tmax=4., pick_list=[], events=None, event_id=None):
+    #Grab events and picks.
+    if events is None or event_id is None:
+        events, event_id = events_from_annotations(raw, event_id=dict(T1=2, T2=3))
+    if len(pick_list) > 0:
+        picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False, exclude='bads',
+                           selection=pick_list)
+    else:
+        picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False, exclude='bads')
+    data = []
+    for f in filters:
+        fmin, fmax = f
+        raw_f = raw.copy().filter(fmin, fmax, method="iir", picks=picks, verbose=False)
+        epochs = Epochs(raw_f, events, event_id, tmin, tmax, picks=picks, baseline=None, preload=True,
+                        verbose=False)
+        data.append(epochs.get_data())
+    # Now, we rearrange it from (filter, subject, epoch, filter) to (subject, epoch, time, filter)
+    data = np.array(data).transpose((1, 2, 3, 0))
+    labels = epochs.events[:, -1] - 2
+    return data, labels
+
+
 #Epochs the raw data and returns what we want.
 def epoch_data(raw, tmin, tmax, pick_list=[], plot_bads=False, eeg_reject_uV=None, scale=None):
     print("Extracting epochs from raw...")

@@ -17,6 +17,9 @@
 #             random_state,
 #         )
 
+#Filter Bank methods are from:
+#https://github.com/NeuroTechX/moabb/blob/be1f81220869158ef37e1ab91b0279fe60aeed5b/pipelines/FBCSP.py
+
 # local script imports
 import gen_tools
 import data_loading
@@ -134,13 +137,24 @@ class ClassifierTester:
                             set (C3, Cz, C4).
 
         avg             :   A boolean determining whether the results are presented as an average or an array of scores.
+
+        filter_bank     :   A boolean determining whether the filter bank preprocessing approach is applied or not.
+                            Note that only a single classifier implementation, FBCSP-SVM, works with this method.
+                            Other classifiers, barring Keras networks, will be omitted.
+
+        random_state    :   The number for the random state of all random selections/operations made in a run.
+                            Setting the random state to the same as a previous run should ensure that these selections
+                            and processes run identically to the first, barring other differences in parameters.
     """
 
-    def __init__(self, data_source='physionet', type='movement', stim_select='lr', subj_range=None, result_metrics=["acc"],
-                 p_select=None, p_select_frac=0.1, p_n_jobs=2, file=None, filter_bounds=[6., 30.], tmin=0., tmax=4., ch_list=[], slice_count=1,
-                 callbacks=False, live_layout='headband', avg=True, random_state=1):
+    def __init__(self, data_source='physionet', stim_type='movement', stim_select='lr', subj_range=None,
+                 result_metrics=["acc"], p_select=None, p_select_frac=0.1, p_n_jobs=2, file=None,
+                 filter_bounds=(8., 35.), tmin=0., tmax=4., ch_list=[], slice_count=1, callbacks=False,
+                 live_layout='headband', avg=True, filter_bank=False, random_state=1):
 
         mne.set_log_level('warning')
+        if type(filter_bank) is not bool:
+            raise Exception("Error: Parameter 'filter_bank' must be of type 'bool'")
 
         #This is used in selecting types of data from the PhysioNet Dataset.
         type_dict = {('movement', 'lr'): 1,
@@ -149,6 +163,12 @@ class ClassifierTester:
                      ('imaginary', 'hf'): 4}
 
         #Misc attributes
+        self.data_source = data_source
+        self.stim_type = stim_type
+        self.stim_select = stim_select
+        self.filter_bounds = filter_bounds
+        self.tbounds = (tmin, tmax)
+        self.ch_list = ch_list
         self.sub_dict = {}
         self.sk_test = False
         self.nn_test = False
@@ -156,6 +176,7 @@ class ClassifierTester:
         self.avg = avg
         self.subj_range = subj_range
         self.random_state = random_state
+        self.filter_bank = filter_bank
 
         # First, determine where we get our data.
         if data_source == 'physionet':
@@ -179,13 +200,8 @@ class ClassifierTester:
             sub_key_list = list(set(sub_key_list) - set(ignore_list))
             # Now, iterate through the subjects, filter and epoch each, and pair the data and labels in an ordered list.
             for sub in sub_key_list:
-                raw = data_loading.get_single_mi(sub, type_dict[(type, stim_select)])
-                if filter_bounds[1] is None:
-                    raw = gen_tools.preprocess_highpass(raw, min=filter_bounds[0])
-                else:
-                    raw = gen_tools.preprocess_bandpass(raw, min=filter_bounds[0], max=filter_bounds[1])
-                data, labels, epochs = gen_tools.epoch_data(raw, tmin=tmin, tmax=tmax, pick_list=ch_list)
-                del epochs
+                raw = data_loading.get_single_mi(sub, type_dict[(stim_type, stim_select)])
+                data, labels = self.__raw_to_data(raw)
                 self.sub_dict[sub] = {'data': data,
                                       'labels': labels}
 
@@ -228,10 +244,7 @@ class ClassifierTester:
                 dloader = LiveBCI.MotorImageryStimulator(stim_time=4, wait_time=4, stim_count=5, stim_type='lr',
                                                          board=None)
                 dloader.load_multiple_data(files=file_paths)
-                dloader.eeg_to_epochs(tmin=tmin, tmax=tmax, event_dict=dict(T1=2, T2=3), stim_ch='STI001')
-                epochs = dloader.epochs
-                data = epochs.get_data()
-                labels = epochs.events[:, -1] - 2
+                data, labels = self.__raw_to_data(dloader)
                 self.sub_dict[sub] = {'data': data,
                                       'labels': labels}
 
@@ -268,7 +281,7 @@ class ClassifierTester:
             # Make our file name.
             if data_source == 'physionet':
                 filename = "test-results_{src}_{stim}-{type}_{datetime}".format(src=data_source, stim=stim_select,
-                                                                                type=type, datetime=self.datetime)
+                                                                                type=stim_type, datetime=self.datetime)
             elif data_source == 'live-imagined':
                 filename = "test-results_{src}_{stim}-imaginary_{datetime}".format(src=data_source, stim=stim_select,
                                                                                    datetime=self.datetime)
@@ -327,7 +340,7 @@ class ClassifierTester:
         self.__print("Results for ClassifierTester Class on dataset '{data}'\n".format(data=data_source))
         self.__print("Date/Time: {datetime}\n".format(datetime=self.datetime))
         self.__print("Settings:\n")
-        self.__print("    Type = {type1} - {type2}\n".format(type1=type, type2=stim_select))
+        self.__print("    Type = {type1} - {type2}\n".format(type1=stim_type, type2=stim_select))
         if subj_range is None:
             self.__print("    Subject Range = All\n")
         else:
@@ -349,8 +362,50 @@ class ClassifierTester:
         return
 
     ##------------------------------------------------------------------------------------------------------------------
-    ##Gridsearch Tools
+    ##Gridsearch and Preprocessing Tools
     ##------------------------------------------------------------------------------------------------------------------
+
+    def __raw_to_data(self, raw_source):
+        if self.data_source == 'physionet' and isinstance(raw_source, mne.io.edf.edf.RawEDF):
+            return self.__process_physionet(raw_source)
+        elif (self.data_source == 'live-movement' or self.data_source == 'live-imagined') \
+                and isinstance(raw_source, LiveBCI):
+            return self.__process_live(raw_source)
+        else:
+            raise Exception("Error: Parameter 'data_source' must be either 'physionet', "
+                            "'live-movement' or 'live-imagined'")
+
+    def __process_physionet(self, raw_source):
+        if self.filter_bank is False:
+            if self.filter_bounds[1] is None:
+                raw = gen_tools.preprocess_highpass(raw_source, min=self.filter_bounds[0])
+            else:
+                raw = gen_tools.preprocess_bandpass(raw_source, min=self.filter_bounds[0], max=self.filter_bounds[1])
+            data, labels, epochs = gen_tools.epoch_data(raw, tmin=self.tbounds[0], tmax=self.tbounds[1],
+                                                        pick_list=self.ch_list)
+            del epochs
+            return data, labels
+        else:
+            filters = [[8, 12], [12, 16], [16, 20], [20, 24], [24, 28], [28, 35]]
+            data, labels = gen_tools.process_filter_bank(raw_source, filters, tmin=self.tbounds[0], tmax=self.tbounds[1],
+                                                         pick_list=self.ch_list)
+            return data, labels
+
+    def __process_live(self, raw_source):
+        if self.filter_bank is False:
+            raw_source.eeg_to_epochs(tmin=self.tbounds[0], tmax=self.tbounds[1], event_dict=dict(T1=2, T2=3), stim_ch='STI001')
+            epochs = raw_source.epochs
+            data = epochs.get_data()
+            labels = epochs.events[:, -1] - 2
+        else:
+            raw = raw_source.raw
+            events = mne.find_events(raw=raw, stim_channel='STI001')
+            event_dict = dict(T1=2, T2=3)
+            filters = [[8, 12], [12, 16], [16, 20], [20, 24], [24, 28], [28, 35]]
+            data, labels = gen_tools.process_filter_bank(raw, filters, tmin=self.tbounds[0], tmax=self.tbounds[1],
+                                                         pick_list=self.ch_list, events=events, event_id=event_dict)
+        return data, labels
+
 
     def __gridsearch_params(self, pool_size, n_jobs=2):
         # Generate the dictionary.
@@ -638,16 +693,16 @@ class ClassifierTester:
         # Form the parameter dictionary
         if self.p_select == 'genetic':
             parameters = {
-                'SVC__C': Continuous(0.001, 1000, distribution='uniform'),
-                'SVC__gamma': Continuous(0.001, 1000, distribution='uniform'),
+                'SVC__C': Continuous(0.00001, 100000, distribution='uniform'),
+                'SVC__gamma': Continuous(0.00001, 100000, distribution='uniform'),
                 'CSP__n_components': Integer(2, (max_csp_components + 1)),
                 'CSP__cov_est': Categorical(['concat', 'epoch']),
                 'VAR__threshold': Continuous(0, 0.1, distribution='uniform')
             }
         else:
             parameters = {
-                'SVC__C': (0.001, 0.01, 0.1, 1, 10, 100, 1000),
-                'SVC__gamma': (0.001, 0.01, 0.1, 1, 10, 100, 1000),
+                'SVC__C': np.logspace(-5, 5, 10).tolist(),
+                'SVC__gamma': np.logspace(-5, 5, 10).tolist(),
                 'CSP__n_components': range(2, max_csp_components + 1),
                 'CSP__cov_est': ('concat', 'epoch'),
                 'VAR__threshold': ((.9 * (1 - .9)), (.85 * (1 - .85)), (.8 * (1 - .8)),
@@ -922,6 +977,8 @@ class ClassifierTester:
             raise Exception("Error: Attribute 'n_times' must be greater than or equal to 1.")
         if batch_size <= 1:
             raise Exception("Error: Attribute 'batch_size' must be greater than 1.")
+        if test_split < 0.1 or test_split > 0.5:
+            raise Exception("Error: Attribute 'test_split' must be a value between 0.1 and 0.5 inclusive.")
 
         #These are internal switches to control which classifiers are used in the train/test internal methods.
         self.sk_test = sk_test
@@ -953,8 +1010,7 @@ class ClassifierTester:
                                                                            cross_val_times=cross_val_times,
                                                                            test_split=test_split))
             else:
-                results.append(self.__train_test_classifiers(batch_size=batch_size, cross_val_times=cross_val_times,
-                               test_split=test_split))
+                results.append(self.__train_test_classifiers(batch_size=batch_size, cross_val_times=cross_val_times))
 
         count = 1
         for result in results:
@@ -969,8 +1025,62 @@ class ClassifierTester:
 
     #Trains and tests each classifier on incrementally growing randomised batches of subjects.
     def run_increment_batch_test(self, batch_size, incr_value, max_batch_size=None, sk_test=True, nn_test=True,
-                                 sk_select=None, nn_select=None, train_test_split=0.2, split_subject=False,
-                                 print_file=True):
+                                 sk_select=None, nn_select=None, test_split=0.2, split_subject=False,
+                                 cross_val_times=10):
+        # Check parameters.
+        if cross_val_times <= 3:
+            raise Exception("Error: Attribute 'cross_val_times' must be greater than or equal to 3.")
+        if batch_size <= 1:
+            raise Exception("Error: Attribute 'batch_size' must be greater than 1.")
+        if max_batch_size < batch_size:
+            raise Exception("Error: Attribute 'max_batch_size' must be greater than attribute 'batch_size'.")
+        if test_split < 0.1 or test_split > 0.5:
+            raise Exception("Error: Attribute 'test_split' must be a value between 0.1 and 0.5 inclusive.")
+
+        # These are internal switches to control which classifiers are used in the train/test internal methods.
+        self.sk_test = sk_test
+        self.sk_select = sk_select
+        self.nn_test = nn_test
+        self.nn_select = nn_select
+
+        # See if our classifiers are already generated, and if not, do so.
+        if not self.sk_class_loaded:
+            self.initialise_sklearn_classifiers()
+        if not self.nn_class_loaded:
+            self.initialise_neural_networks()
+
+        # Write our initial text into results.
+        self.__print("--INCREMENTAL BATCH TEST--\n")
+        self.__print("Parameters:\n")
+        self.__print("    batch_size = {batch}\n".format(batch=batch_size))
+        self.__print("    incr_value = {inc}\n".format(inc=incr_value))
+        self.__print("    max_batch_size = {mbs}\n".format(mbs=max_batch_size))
+        self.__print("    sk_test = {sk}, sk_select = {sks}\n".format(sk=sk_test, sks=sk_select))
+        self.__print("    nn_test = {nn}, nn_select = {nns}\n".format(nn=nn_test, nns=nn_select))
+        self.__print("    train_test_split = {tts}, split_subjects = {ss}\n".format(tts=train_test_split,
+                                                                                    ss=split_subject))
+        self.__print("    cross_val_times = {cvt}\n".format(cvt=cross_val_times))
+
+        #Now, we perform the test and increment as we go.
+        results = {}
+        cur_batch_size = batch_size
+        while cur_batch_size < max_batch_size:
+            if split_subject:
+                result = self.__split_subject_train_test_classifiers(batch_size=batch_size,
+                                                                           cross_val_times=cross_val_times,
+                                                                           test_split=test_split)
+            else:
+                result = self.__train_test_classifiers(batch_size=batch_size, cross_val_times=cross_val_times)
+            results[cur_batch_size] = result
+            cur_batch_size = cur_batch_size + incr_value
+
+        for b_size, result in results.items():
+            self.__print("--Batch Size: {n}: \n".format(n=b_size))
+            if self.avg:
+                self.__print_average_results(result)
+            else:
+                self.__print_results(result)
+            self.__print("\n")
         return
 
     ##------------------------------------------------------------------------------------------------------------------
@@ -1058,7 +1168,7 @@ class ClassifierTester:
 
         return results
 
-    def __train_test_classifiers(self, batch_size, cross_val_times, test_split):
+    def __train_test_classifiers(self, batch_size, cross_val_times):
         # Create our randomised set of subjects
         subjects = list(self.sub_dict.keys())
         random.shuffle(subjects)
@@ -1161,8 +1271,8 @@ class ClassifierTester:
 print(mne.get_config('MNE_LOGGING_LEVEL'))
 mne.set_config('MNE_LOGGING_LEVEL', 'warning')
 print(mne.get_config('MNE_LOGGING_LEVEL'))
-test = ClassifierTester(subj_range=[1, 110], data_source='physionet', stim_select='hf', type='imaginary',
+test = ClassifierTester(subj_range=[1, 2], data_source='physionet', stim_select='hf', stim_type='imaginary',
                         p_select='genetic', p_select_frac=0.4, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
                         random_state=42, p_n_jobs=-1)
-test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=10)
+test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=5)
 #test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False)

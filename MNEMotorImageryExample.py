@@ -77,7 +77,7 @@ events, event_id = events_from_annotations(raw, event_id=dict(T1=2, T2=3))
 picks = pick_types(raw.info, meg=False, eeg=True, stim=False, eog=False, exclude='bads')
 
 #Now we can finally get our epochs. Training will be done between 1s and 2s in the epochs.
-epochs = Epochs(raw, events, event_id, tmin, tmax, proj=True, picks=picks, baseline=None, preload=True)
+epochs = Epochs(raw, events, event_id, tmin, tmax, picks=picks, baseline=None, preload=True)
 epochs_train = epochs.copy()#.crop(tmin = 1., tmax = 2.)
 labels = epochs.events[:,-1] -2
 
