@@ -1,6 +1,24 @@
 
 Subjects:
     -Subject 1: Male, 24 years old, right-handed, no prior BCI experience.
+        -Subject had often consumed caffeine within 1-2 hours prior to recording.
+        -Subject reported difficulty in maintaining focus on stimuli during imagined activity. Additionally, subject
+        reported difficulty in effectively imagining movement consistently and without accidentally focusing on other
+        bodily movements.
+            -This has lead to the avoidance of imagined stimuli for further test due to excessive waste in time with
+            failed recordings.
+            -This could also be due to the subject's old diagnosis of ADHD causing difficulties in focus.
+
+        -Subject reported eye-strain and focus issues after 3 concurrent recording sessions (240s per session).
+    -Subject 2: Male, 22 years old?, right handed?, no prior BCI experience.
+        -Slightly thicker hair may result in worse signal quality.
+        -Managed to avoid blinks during stim times for the most part.
+        -Mentioned that it was difficult to remain comfortable without conscious movement between stimuli.
+        -In observed recordings, clear fluctuations were present for hf stim, but not lr stim.
+        -Centre-head electrod placement meant no observed eyeblinks.
+        -Subject did not report any strong eye-strain from focus.
+        -Subject did report difficulty in maintaining focus on stim window over other on-screen elements.
+        -Subject had not consumed caffeine or other stimulants in the morning prior to recording.
 
 Subject Instructions:
     Each subject was instructed to remain relaxed until stimulus onset.
@@ -15,6 +33,9 @@ Experimental Setup:
     -Hardware: OpenBCI Ganglion Board (4-Channels), OpenBCI EEG Headband Kit (2 Flat-Snape Dry Electrodes, 2 Comb Dry
     electrodes), Lenovo Thinkpad Pro 580 Laptop (Recording Device).
     -Electrode Locations: Fp1, Fp2, O1, O2 (Standard Configuration) C3, C4, Cz (Optimal Configuration)
+        Note: Electrode locations are a rough estimate. The OpenBCI EEG Headband is not exact with electrode placement
+        even when used in the intended manner (i.e. as a headband), and when strapped under the chin for motor cortex
+        placement, the electrodes are noticeably forward compared to 10-20 system diagrams.
 
 Methodology:
     Subjects were presented with stimuli representing a particular direction, and instructed to to either perform the

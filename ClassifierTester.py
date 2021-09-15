@@ -114,6 +114,11 @@ class ClassifierTester:
                             selection. Should be an integer from 1 to the total core/thread limit of the system, or
                             -1 to simply use all available.
 
+        p_skip_mdm      :   A boolean indicating whether a parameter search on the MDM pipeline should be performed or
+                            not. MDM is the most time consuming method to train, and parameter searches on it cause a
+                            number of warnings and issues, so it is recommended to manually set the parameters to
+                            something reasonable.
+
         file            :   Indicates the filepath to write results to. If 'file' = None, a new file will be generated
                             in the folder 'ClassifierTesterResults' with a name indicating the data tested and the
                             date and time of testing.
@@ -151,7 +156,7 @@ class ClassifierTester:
     """
 
     def __init__(self, data_source='physionet', stim_type='movement', stim_select='lr', subj_range=None,
-                 result_metrics=["acc"], p_select=None, p_select_frac=0.1, p_n_jobs=2, file=None,
+                 result_metrics=["acc"], p_select=None, p_select_frac=0.1, p_n_jobs=2, p_skip_mdm=True, file=None,
                  filter_bounds=(8., 35.), tmin=0., tmax=4., ch_list=[], slice_count=1, callbacks=False,
                  live_layout='headband', avg=True, filter_bank=False, random_state=1):
 
@@ -312,6 +317,7 @@ class ClassifierTester:
         self.nn_dict = {}
         self.p_select = p_select
         self.p_n_jobs = p_n_jobs
+        self.p_skip_mdm = p_skip_mdm
         if self.p_select is not None:
             if self.p_select == 'gridsearch':
                 print("Performing Gridsearch on compatible pipelines to find optimal parameters...")
@@ -432,7 +438,10 @@ class ClassifierTester:
 
         # Perform a gridsearch for each.
         for pipe in pipelines:
-            print("\nPerforming gridsearch on pipeline: {pipe}".format(pipe=pipe[0]))
+            if pipe[0] == 'MDM' and self.p_skip_mdm: #We don't perform gridsearch on MDM as it is too time consuming.
+                self.sk_dict[pipe[0]] = pipe[1]
+                continue
+            print("\nPerforming parameter search on pipeline: {pipe}".format(pipe=pipe[0]))
             if self.p_select == 'gridsearch':
                 grid = self.__perform_gridsearch(pipe[1], pipe[2], data, labels, n_jobs=n_jobs, cross_val=5)
             elif self.p_select == 'genetic':
@@ -781,11 +790,11 @@ class ClassifierTester:
         print("Generating MDM classifier pipeline...")
         # Assemble classifier
         if params is None:
-            cov = Covariances()
+            cov = Covariances(estimator='cov')
             mdm = MDM(metric='riemann')
         elif type(params) is dict:
             cov = Covariances(estimator=params['COV__estimator'])
-            mdm = MDM(metric='riemann')
+            mdm = MDM(metric=params['MDM__metric'])
         else:
             raise Exception("Error: Parameter 'params' must be of type 'dict'.")
         # create the pipeline
@@ -793,11 +802,13 @@ class ClassifierTester:
         # Form the parameter dictionary
         if self.p_select == 'genetic':
             parameters = {
-                'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'])
+                'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'mcd', 'corr']),
+                'MDM__metric': Categorical(['riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'])
             }
         else:
             parameters = {
-                'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr')
+                'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
+                'MDM__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
             }
         return "MDM", clf, parameters
 
@@ -1308,8 +1319,8 @@ class ClassifierTester:
 print(mne.get_config('MNE_LOGGING_LEVEL'))
 mne.set_config('MNE_LOGGING_LEVEL', 'warning')
 print(mne.get_config('MNE_LOGGING_LEVEL'))
-test = ClassifierTester(subj_range=[1, 2], data_source='physionet', stim_select='hf', stim_type='imaginary',
-                        p_select='genetic', p_select_frac=0.4, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
-                        random_state=42, p_n_jobs=-1)
+test = ClassifierTester(subj_range=[1, 110], data_source='physionet', stim_select='hf', stim_type='imaginary',
+                        p_select='genetic', p_select_frac=0.1, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
+                        random_state=42, p_n_jobs=-1, p_skip_mdm=True)
 test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=5)
 #test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False)
