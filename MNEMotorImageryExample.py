@@ -46,11 +46,11 @@ def csp_lda(max_csp_components=10):
 
 #Select the hands & feet tests.
 files = []
-for a in range(1, 11):
+for a in range(1, 2):
     num = "{0:03}".format(a)
-    files += ["EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R03.edf",
-              "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R07.edf",
-              "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R11.edf"]
+    files += ["EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R04.edf",
+              "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R08.edf",
+              "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R12.edf"]
 
 #load the files.
 raw = concatenate_raws([read_raw_edf(f, preload=True) for f in files])
@@ -85,7 +85,6 @@ print(epochs.get_data().shape)
 print(labels.shape)
 
 # Now for a monte-carlo cross-validation generator
-scores = []
 epochs_data = epochs.get_data()
 epochs_data_train = epochs_train.get_data()
 print(epochs_data.shape)
@@ -93,69 +92,70 @@ rand = random.randint(1, 99999)
 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=rand)
 #cv = ShuffleSplit(10, test_size=0.2, random_state=rand)
 #cv_split = cv.split(epochs_data_train)
-
+print(rand)
 #Assemble classifiers
 csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
 var = VarianceThreshold(threshold=(.9 * (1 - .9)))
-lda = LinearDiscriminantAnalysis()
+svm = svm.SVC(gamma='auto', C=1)
+
+clf2 = Pipeline([('CSP', csp), ('VAR', var), ('SVM', svm)])
 
 #Use scikit-learn pipeline with cross_val_score function
 #clf = Pipeline([('CSP', csp), ('VAR', var), ('LDA', lda)])
 #clf = Pipeline([('CSP', csp), ('LDA', lda)])
-name, clf, parameters = csp_lda()
-scores = cross_val_score(clf, epochs_data, labels, cv=cv, n_jobs=1)
+scores = cross_val_score(clf2, epochs_data, labels, cv=cv, n_jobs=1)
 class_balance = np.mean(labels == labels[0])
 class_balance = max(class_balance, 1. - class_balance)
-print("LDA Classification accuracy: %f / Chance level: %f" % (np.mean(scores),
+print("SVM Classification accuracy: %f / Chance level: %f" % (np.mean(scores),
                                                            class_balance))
-
-#This is necessary for multithreading in windows.
-bools = list([True, False])
-
-name, clf, parameters = csp_lda()
-print("Performing GASearchCV to find optimal parameter set...")
-t0 = time()
-ga_parameters = {
-    'LDA__solver': Categorical(['svd', 'lsqr', 'eigen']),
-    'CSP__n_components': Integer(2, 11),
-    'CSP__cov_est': Categorical(['concat', 'epoch']),
-    #'CSP__norm_trace': Categorical([True, False]),
-    'VAR__threshold': Continuous(0, 0.1, distribution='uniform')
-}
-grid_search = GASearchCV(estimator=clf,
-                         cv=cv,
-                         scoring='accuracy',
-                         param_grid=ga_parameters,
-                         n_jobs=2,
-                         verbose=True)
-callback = ConsecutiveStopping(generations=5, metric='fitness')
-grid_search.fit(epochs_data, labels, callbacks=callback)
-print("GASearchCV completed in %0.3fs" % (time() - t0))
-
-# And print out our results.
-print("Displaying Results...")
-print("Best score: %0.3f" % grid_search.best_score_)
-print("Best parameters set:")
-best_parameters = grid_search.best_estimator_.get_params()
-for param_name in sorted(parameters.keys()):
-    print("\t%s: %r" % (param_name, best_parameters[param_name]))
-
-print("\n\n")
-
-name, clf, parameters = csp_lda()
-print("Performing GridSearchCV to find optimal parameter set...")
-t0 = time()
-grid_search = GridSearchCV(clf, parameters, n_jobs=2, verbose=0, cv=5)
-grid_search.fit(epochs_data, labels)
-print("GridSearchCV completed in %0.3fs" % (time() - t0))
-
-# And print out our results.
-print("Displaying Results...")
-print("Best score: %0.3f" % grid_search.best_score_)
-print("Best parameters set:")
-best_parameters = grid_search.best_estimator_.get_params()
-for param_name in sorted(parameters.keys()):
-    print("\t%s: %r" % (param_name, best_parameters[param_name]))
+#
+# #This is necessary for multithreading in windows.
+# bools = list([True, False])
+#
+# name, clf, parameters = csp_lda()
+# print("Performing GASearchCV to find optimal parameter set...")
+# t0 = time()
+# ga_parameters = {
+#     'LDA__solver': Categorical(['svd', 'lsqr', 'eigen']),
+#     'CSP__n_components': Integer(2, 11),
+#     'CSP__cov_est': Categorical(['concat', 'epoch']),
+#     #'CSP__norm_trace': Categorical([True, False]),
+#     'VAR__threshold': Continuous(0, 0.1, distribution='uniform')
+# }
+# grid_search = GASearchCV(estimator=clf,
+#                          cv=cv,
+#                          scoring='accuracy',
+#                          param_grid=ga_parameters,
+#                          n_jobs=2,
+#                          verbose=True)
+# callback = ConsecutiveStopping(generations=5, metric='fitness')
+# grid_search.fit(epochs_data, labels, callbacks=callback)
+# print("GASearchCV completed in %0.3fs" % (time() - t0))
+#
+# # And print out our results.
+# print("Displaying Results...")
+# print("Best score: %0.3f" % grid_search.best_score_)
+# print("Best parameters set:")
+# best_parameters = grid_search.best_estimator_.get_params()
+# for param_name in sorted(parameters.keys()):
+#     print("\t%s: %r" % (param_name, best_parameters[param_name]))
+#
+# print("\n\n")
+#
+# name, clf, parameters = csp_lda()
+# print("Performing GridSearchCV to find optimal parameter set...")
+# t0 = time()
+# grid_search = GridSearchCV(clf, parameters, n_jobs=2, verbose=0, cv=5)
+# grid_search.fit(epochs_data, labels)
+# print("GridSearchCV completed in %0.3fs" % (time() - t0))
+#
+# # And print out our results.
+# print("Displaying Results...")
+# print("Best score: %0.3f" % grid_search.best_score_)
+# print("Best parameters set:")
+# best_parameters = grid_search.best_estimator_.get_params()
+# for param_name in sorted(parameters.keys()):
+#     print("\t%s: %r" % (param_name, best_parameters[param_name]))
 
 # #And print them
 # class_balance = np.mean(labels == labels[0])

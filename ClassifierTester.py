@@ -186,6 +186,10 @@ class ClassifierTester:
         self.random_state = random_state
         self.filter_bank = filter_bank
 
+        #If no random state is selected, make one.
+        if self.random_state is None or type(self.random_state) != int:
+            self.random_state = random.randint(1, 999999)
+
         # First, determine where we get our data.
         if data_source == 'physionet':
             # Define our subject range for iteration
@@ -474,7 +478,8 @@ class ClassifierTester:
     def __perform_genetic(self, classifier, parameters, data, labels, n_jobs=2, verbose=False, cross_val=5):
         #First, we make the validators and callbacks
         cv = StratifiedKFold(n_splits=cross_val, shuffle=True, random_state=self.random_state)
-        callback = ConsecutiveStopping(generations=5, metric='fitness')
+        #callback = ConsecutiveStopping(generations=15, metric='fitness')
+        callback = DeltaThreshold(threshold=0.001, generations=5, metric='fitness_min')
 
         #Perform the genetic search
         print("Performing GASearchCV to find optimal parameter set...")
@@ -684,8 +689,7 @@ class ClassifierTester:
                 'LDA__solver': ('svd', 'lsqr', 'eigen'),
                 'CSP__n_components': range(2, max_csp_components + 1),
                 'CSP__cov_est': ('concat', 'epoch'),
-                'VAR__threshold': ((.9 * (1 - .9)), (.85 * (1 - .85)), (.8 * (1 - .8)),
-                                   (.75 * (1 - .75)))
+                'VAR__threshold': np.linspace(start=0, stop=0.1, num=15)
             }
         return "CSP-LDA", clf, parameters
 
@@ -704,7 +708,7 @@ class ClassifierTester:
             var = VarianceThreshold(threshold=(.9 * (1 - .9)))
             csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
         elif type(params) is dict:
-            svc = svm.SVC(gamma=params['SVC__gamma'], C=params['SVC__C'])
+            svc = svm.SVC(kernel=params['SVC__kernel'], C=params['SVC__C'])
             var = VarianceThreshold(threshold=params['VAR__threshold'])
             csp = CSP(n_components=params['CSP__n_components'], reg=None, log=True, norm_trace=False,
                       cov_est=params['CSP__cov_est'])
@@ -716,7 +720,7 @@ class ClassifierTester:
         if self.p_select == 'genetic':
             parameters = {
                 'SVC__C': Continuous(0.00001, 100000, distribution='uniform'),
-                'SVC__gamma': Continuous(0.00001, 100000, distribution='uniform'),
+                'SVC__kernel': Categorical(['linear', 'poly', 'rbf', 'sigmoid']),
                 'CSP__n_components': Integer(2, (max_csp_components + 1)),
                 'CSP__cov_est': Categorical(['concat', 'epoch']),
                 'VAR__threshold': Continuous(0, 0.1, distribution='uniform')
@@ -724,11 +728,10 @@ class ClassifierTester:
         else:
             parameters = {
                 'SVC__C': np.logspace(-5, 5, 10).tolist(),
-                'SVC__gamma': np.logspace(-5, 5, 10).tolist(),
+                'SVC__kernel': ('linear', 'poly', 'rbf', 'sigmoid'),
                 'CSP__n_components': range(2, max_csp_components + 1),
                 'CSP__cov_est': ('concat', 'epoch'),
-                'VAR__threshold': ((.9 * (1 - .9)), (.85 * (1 - .85)), (.8 * (1 - .8)),
-                                   (.75 * (1 - .75)))
+                'VAR__threshold': np.linspace(start=0, stop=0.1, num=15)
             }
         return "CSP-SVM", clf, parameters
 
@@ -772,8 +775,7 @@ class ClassifierTester:
                 'KNN__algorithm': ('ball_tree', 'kd_tree', 'brute'),
                 'CSP__n_components': range(2, max_csp_components + 1),
                 'CSP__cov_est': ('concat', 'epoch'),
-                'VAR__threshold': ((.9 * (1 - .9)), (.85 * (1 - .85)), (.8 * (1 - .8)),
-                                   (.75 * (1 - .75)))
+                'VAR__threshold': np.linspace(start=0, stop=0.1, num=15)
             }
         return "CSP-KNN", clf, parameters
 
@@ -918,19 +920,19 @@ class ClassifierTester:
         elif type(params) is dict:
             fb = FilterBank(make_pipeline(Covariances(estimator="oas"), CSP(nfilter=4)))
             kb = SelectKBest(score_func=mutual_info_classif, k=10)
-            svc = svm.SVC(C=params['SVC__C'], gamma=params['SVC__gamma'])
+            svc = svm.SVC(kernel=params['SVC__kernel'], C=params['SVC__C'])
         else:
             raise Exception("Error: Parameter 'params' must be of type 'dict'.")
         clf = Pipeline([('FB', fb), ('KB', kb), ('SVC', svc)])
         if self.p_select == 'genetic':
             parameters = {
                 'SVC__C': Continuous(0.00001, 100000, distribution='uniform'),
-                'SVC__gamma': Continuous(0.00001, 100000, distribution='uniform')
+                'SVC__kernel': Categorical(['linear', 'poly', 'rbf', 'sigmoid'])
             }
         else:
             parameters = {
                 'SVC__C': np.logspace(-5, 5, 10).tolist(),
-                'SVC__gamma': np.logspace(-5, 5, 10).tolist()
+                'SVC__kernel': ('linear', 'poly', 'rbf', 'sigmoid')
             }
         return "FBCSP-SVM", clf, parameters
 
@@ -1319,8 +1321,8 @@ class ClassifierTester:
 print(mne.get_config('MNE_LOGGING_LEVEL'))
 mne.set_config('MNE_LOGGING_LEVEL', 'warning')
 print(mne.get_config('MNE_LOGGING_LEVEL'))
-test = ClassifierTester(subj_range=[1, 110], data_source='physionet', stim_select='hf', stim_type='imaginary',
+test = ClassifierTester(subj_range=[1, 2], data_source='physionet', stim_select='hf', stim_type='imaginary',
                         p_select='genetic', p_select_frac=0.1, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
-                        random_state=42, p_n_jobs=-1, p_skip_mdm=True)
+                        p_n_jobs=2, p_skip_mdm=True, tmin=-1, tmax=4)
 test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=5)
 #test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False)
