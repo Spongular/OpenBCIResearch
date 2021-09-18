@@ -36,11 +36,11 @@ def get_single_mi(subject, test_type):
     run = __get_runs(test_type)
     subject = "{:03d}".format(subject)
     # Now, we grab the data to return
-    file = ["EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
+    file = ["E:\\PycharmProjects\\OpenBCIResearch\\EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
             + subject + "\\S" + subject + "R" + "{:02d}".format(run) + ".edf",
-            "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
+            "E:\\PycharmProjects\\OpenBCIResearch\\EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
             + subject + "\\S" + subject + "R" + "{:02d}".format(run + 4) + ".edf",
-            "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
+            "E:\\PycharmProjects\\OpenBCIResearch\\EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
             + subject + "\\S" + subject + "R" + "{:02d}".format(run + 8) + ".edf"]
     raw = concatenate_raws([read_raw_edf(f, preload=True) for f in file])
     return raw
@@ -55,11 +55,11 @@ def get_multiple_mi(subjects, test_type):
 
     # Then grab for each subject.
     for subject in subjects:
-        files += ["EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
+        files += ["E:\\PycharmProjects\\OpenBCIResearch\\EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
                   + subject + "\\S" + subject + "R" + "{:02d}".format(run) + ".edf",
-                  "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
+                  "E:\\PycharmProjects\\OpenBCIResearch\\EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
                   + subject + "\\S" + subject + "R" + "{:02d}".format(run + 4) + ".edf",
-                  "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
+                  "E:\\PycharmProjects\\OpenBCIResearch\\EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
                   + subject + "\\S" + subject + "R" + "{:02d}".format(run + 8) + ".edf"]
     raw = concatenate_raws([read_raw_edf(f, preload=True) for f in files])
     return raw
@@ -80,11 +80,11 @@ def get_all_mi_between(start, end, test_type, exclusions):
         if subject in exclusions:
             continue
         # Otherwise, add our files.
-        files += ["EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
+        files += ["E:\\PycharmProjects\\OpenBCIResearch\\EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
                   + subject + "\\S" + subject + "R" + "{:02d}".format(run) + ".edf",
-                  "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
+                  "E:\\PycharmProjects\\OpenBCIResearch\\EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
                   + subject + "\\S" + subject + "R" + "{:02d}".format(run + 4) + ".edf",
-                  "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
+                  "E:\\PycharmProjects\\OpenBCIResearch\\EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S"
                   + subject + "\\S" + subject + "R" + "{:02d}".format(run + 8) + ".edf"]
     raw = concatenate_raws([read_raw_edf(f, preload=True) for f in files])
     return raw

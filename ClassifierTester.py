@@ -115,13 +115,19 @@ class ClassifierTester:
                             -1 to simply use all available.
 
         p_skip_mdm      :   A boolean indicating whether a parameter search on the MDM pipeline should be performed or
-                            not. MDM is the most time consuming method to train, and parameter searches on it cause a
+        (Deprecated)        not. MDM is the most time consuming method to train, and parameter searches on it cause a
                             number of warnings and issues, so it is recommended to manually set the parameters to
-                            something reasonable.
+                            something reasonable. (No Longer Implemented. Can be uncommented.)
 
-        file            :   Indicates the filepath to write results to. If 'file' = None, a new file will be generated
+        f_path          :   Indicates the filepath to write results to. If 'file' = None, a new file will be generated
                             in the folder 'ClassifierTesterResults' with a name indicating the data tested and the
                             date and time of testing.
+                            Ensure that the path ends without a '/', as one is automatically appended during processing
+                            of the file path. i.e. a valid f_path value is 'ClassifierTesterResults' and not
+                            'ClassifierTesterResults/'
+
+        f_name          :   Indicates the name of the file to write to. If f_name = None, a file name is generated based
+                            on the current dataset, stimulus, time and date.
 
         filter_bounds   :   A one or two element list that contains the bounds for the filter. If one element is specified,
                             a highpass filter is performed on the data with the given lower bound. If two elements, then
@@ -154,10 +160,10 @@ class ClassifierTester:
                             Setting the random state to the same as a previous run should ensure that these selections
                             and processes run identically to the first, barring other differences in parameters.
     """
-
+    #p_skip_mdm=True
     def __init__(self, data_source='physionet', stim_type='movement', stim_select='lr', subj_range=None,
-                 result_metrics=["acc"], p_select=None, p_select_frac=0.1, p_n_jobs=2, p_skip_mdm=True, file=None,
-                 filter_bounds=(8., 35.), tmin=0., tmax=4., ch_list=[], slice_count=1, callbacks=False,
+                 result_metrics=["acc"], p_select=None, p_select_frac=0.1, p_n_jobs=2, f_path=None,
+                 f_name=None, filter_bounds=(8., 35.), tmin=0., tmax=4., ch_list=[], slice_count=1, callbacks=False,
                  live_layout='headband', avg=True, filter_bank=False, random_state=1):
 
         mne.set_log_level('warning')
@@ -208,7 +214,7 @@ class ClassifierTester:
                     "Error, subj_range is invalid. Ensure it is two values between 1 and 109, with the first being smaller")
             #Now, we transform the range to a list and remove the bad subjects.
             sub_key_list = list(range(r1, r2))
-            ignore_list = (38, 80, 88, 89, 92, 100, 104)
+            ignore_list = [38, 80, 88, 89, 92, 100, 104]
             sub_key_list = list(set(sub_key_list) - set(ignore_list))
             # Now, iterate through the subjects, filter and epoch each, and pair the data and labels in an ordered list.
             for sub in sub_key_list:
@@ -289,31 +295,37 @@ class ClassifierTester:
             raise Exception("Error: No valid metric specified in list 'result_metrics'.")
 
         self.datetime = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
-        if file is None:
-            # Make our file name.
-            if data_source == 'physionet':
-                filename = "test-results_{src}_{stim}-{type}_{datetime}".format(src=data_source, stim=stim_select,
-                                                                                type=stim_type, datetime=self.datetime)
-            elif data_source == 'live-imagined':
-                filename = "test-results_{src}_{stim}-imaginary_{datetime}".format(src=data_source, stim=stim_select,
+        if f_name is None:
+            if self.data_source == 'physionet':
+                file_name = "test-results_{src}_{stim}-{type}_{datetime}".format(src=self.data_source,
+                                                                                stim=self.stim_select,
+                                                                                type=self.stim_type,
+                                                                                datetime=self.datetime)
+            elif self.data_source == 'live-imagined':
+                file_name = "test-results_{src}_{stim}-imaginary_{datetime}".format(src=self.data_source,
+                                                                                   stim=self.stim_select,
                                                                                    datetime=self.datetime)
-            elif data_source == 'live-movement':
-                filename = "test-results_{src}_{stim}-movement_{datetime}".format(src=data_source, stim=stim_select,
+            elif self.data_source == 'live-movement':
+                file_name = "test-results_{src}_{stim}-movement_{datetime}".format(src=self.data_source,
+                                                                                  stim=self.stim_select,
                                                                                   datetime=self.datetime)
-            elif data_source == 'mamem-ssvep':
-                filename = "test-results_{src}_{stim}_{datetime}".format(src=data_source, stim=stim_select,
+            elif self.data_source == 'mamem-ssvep':
+                file_name = "test-results_{src}_{stim}_{datetime}".format(src=self.data_source, stim=self.stim_select,
                                                                          datetime=self.datetime)
             else:
                 raise Exception("Error: 'data_source' must be a string matching either 'physionet', 'live-imagined', "
                                 "'live-movement' or 'mamem-ssvep'.")
-
+        else:
+            file_name = f_name
+        if f_path is None or type(f_path) != str:
             # Create and open a new file to record the results of the testing.
-            path = "ClassifierTesterResults/{filename}.txt".format(filename=filename)
+            path = "ClassifierTesterResults/{file_name}.txt".format(file_name=file_name)
             self.result_file = open(path, "w+")
             print("Generated new file on path '{path}'".format(path=path))
         else:
-            self.result_file = open(file, "w")
-            print("File in path '{path}' opened.".format(path=file))
+            path = "{file_path}/{file_name}.txt".format(file_path=f_path, file_name=file_name)
+            self.result_file = open(path, "w")
+            print("File in path '{path}' opened.".format(path=path))
 
         # Finally, perform the gridsearch method to optimise parameters for the classifiers.
         # For this, we use 20% of the subject pool selected randomly.
@@ -321,7 +333,7 @@ class ClassifierTester:
         self.nn_dict = {}
         self.p_select = p_select
         self.p_n_jobs = p_n_jobs
-        self.p_skip_mdm = p_skip_mdm
+        #self.p_skip_mdm = p_skip_mdm
         if self.p_select is not None:
             if self.p_select == 'gridsearch':
                 print("Performing Gridsearch on compatible pipelines to find optimal parameters...")
@@ -442,9 +454,9 @@ class ClassifierTester:
 
         # Perform a gridsearch for each.
         for pipe in pipelines:
-            if pipe[0] == 'MDM' and self.p_skip_mdm: #We don't perform gridsearch on MDM as it is too time consuming.
-                self.sk_dict[pipe[0]] = pipe[1]
-                continue
+            # if pipe[0] == 'MDM' and self.p_skip_mdm: #We don't perform gridsearch on MDM as it is too time consuming.
+            #     self.sk_dict[pipe[0]] = pipe[1]
+            #     continue
             print("\nPerforming parameter search on pipeline: {pipe}".format(pipe=pipe[0]))
             if self.p_select == 'gridsearch':
                 grid = self.__perform_gridsearch(pipe[1], pipe[2], data, labels, n_jobs=n_jobs, cross_val=5)
@@ -478,8 +490,8 @@ class ClassifierTester:
     def __perform_genetic(self, classifier, parameters, data, labels, n_jobs=2, verbose=False, cross_val=5):
         #First, we make the validators and callbacks
         cv = StratifiedKFold(n_splits=cross_val, shuffle=True, random_state=self.random_state)
-        #callback = ConsecutiveStopping(generations=15, metric='fitness')
-        callback = DeltaThreshold(threshold=0.001, generations=5, metric='fitness_min')
+        #callback = ConsecutiveStopping(generations=5, metric='fitness')
+        callback = DeltaThreshold(threshold=0.001, generations=3, metric='fitness_min')
 
         #Perform the genetic search
         print("Performing GASearchCV to find optimal parameter set...")
@@ -589,7 +601,7 @@ class ClassifierTester:
     def initialise_neural_networks(self, d_shape=None, d_fourth_axis=1):
         #This will construct compiled models set to defaults as determined
         #by the EEGNet and Fusion EEGNet documentation.
-        if len(self.sk_dict.keys()) > 0:
+        if len(self.nn_dict.keys()) > 0:
             cont = self.__await_yesno(q_string="Warning: Neural Networks are already initialised, do you wish to "
                                                "overwrite them (y/n)?")
             if cont is False:
@@ -682,7 +694,7 @@ class ClassifierTester:
                 'LDA__solver': Categorical(['svd', 'lsqr', 'eigen']),
                 'CSP__n_components': Integer(2, (max_csp_components + 1)),
                 'CSP__cov_est': Categorical(['concat', 'epoch']),
-                'VAR__threshold': Continuous(0, 0.1, distribution='uniform')
+                'VAR__threshold': Categorical([0, 0.001, 0.0025, 0.005, 0.0075, 0.01])
             }
         else:
             parameters = {
@@ -719,11 +731,11 @@ class ClassifierTester:
         # Form the parameter dictionary
         if self.p_select == 'genetic':
             parameters = {
-                'SVC__C': Continuous(0.00001, 100000, distribution='uniform'),
+                'SVC__C': Categorical([0.00001, 0.0001, 0.001, 0.01, 0.1, 0, 1, 10, 100, 1000, 10000, 100000]),
                 'SVC__kernel': Categorical(['linear', 'poly', 'rbf', 'sigmoid']),
                 'CSP__n_components': Integer(2, (max_csp_components + 1)),
                 'CSP__cov_est': Categorical(['concat', 'epoch']),
-                'VAR__threshold': Continuous(0, 0.1, distribution='uniform')
+                'VAR__threshold': Categorical([0, 0.001, 0.0025, 0.005, 0.0075, 0.01])
             }
         else:
             parameters = {
@@ -766,7 +778,7 @@ class ClassifierTester:
                 'KNN__algorithm': Categorical(['ball_tree', 'kd_tree', 'brute']),
                 'CSP__n_components': Integer(2, (max_csp_components + 1)),
                 'CSP__cov_est': Categorical(['concat', 'epoch']),
-                'VAR__threshold': Continuous(0, 0.1, distribution='uniform')
+                'VAR__threshold': Categorical([0, 0.001, 0.0025, 0.005, 0.0075, 0.01])
             }
         else:
             parameters = {
@@ -788,6 +800,8 @@ class ClassifierTester:
     #   https://github.com/NeuroTechX/moabb/tree/master/pipelines
     #   https://neurotechx.github.io/eeg-notebooks/auto_examples/visual_ssvep/02r__ssvep_decoding.html
 
+    #'mcd' is not used in the estimator search as it is far too time-intensive.
+
     def __mdm(self, params=None):
         print("Generating MDM classifier pipeline...")
         # Assemble classifier
@@ -804,12 +818,12 @@ class ClassifierTester:
         # Form the parameter dictionary
         if self.p_select == 'genetic':
             parameters = {
-                'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'mcd', 'corr']),
+                'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'corr']),
                 'MDM__metric': Categorical(['riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'])
             }
         else:
             parameters = {
-                'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
+                'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'corr'),
                 'MDM__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
             }
         return "MDM", clf, parameters
@@ -830,12 +844,12 @@ class ClassifierTester:
         # Form the parameter dictionary
         if self.p_select == 'genetic':
             parameters = {
-                'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'mcd', 'corr']),
+                'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'corr']),
                 'TS__metric': Categorical(['riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'])
             }
         else:
             parameters = {
-                'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
+                'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'corr'),
                 'TS__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
             }
         return "TS-LR", clf, parameters
@@ -860,14 +874,14 @@ class ClassifierTester:
         # Form the parameter dictionary
         if self.p_select == 'genetic':
             parameters = {
-                'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'mcd', 'corr']),
+                'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'corr']),
                 'CSP__nfilter': Integer(2, max_n_filters),
                 'CSP__metric': Categorical(['riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein']),
                 'LDA__solver': Categorical(['svd', 'lsqr', 'eigen'])
             }
         else:
             parameters = {
-                'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
+                'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'corr'),
                 'CSP__nfilter': range(2, max_n_filters),
                 'CSP__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'),
                 'LDA__solver': ('svd', 'lsqr', 'eigen')
@@ -893,13 +907,13 @@ class ClassifierTester:
         # Form the parameter dictionary
         if self.p_select == 'genetic':
             parameters = {
-                'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'mcd', 'corr']),
+                'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'corr']),
                 'CSP__nfilter': Integer(2, max_n_filters),
                 'CSP__metric': Categorical(['riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'])
             }
         else:
             parameters = {
-                'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
+                'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'corr'),
                 'CSP__nfilter': range(2, max_n_filters),
                 'CSP__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
             }
@@ -999,9 +1013,9 @@ class ClassifierTester:
         self.nn_select = nn_select
 
         # See if our classifiers are already generated, and if not, do so.
-        if not self.sk_class_loaded:
+        if not self.sk_class_loaded and sk_test:
             self.initialise_sklearn_classifiers()
-        if not self.nn_class_loaded:
+        if not self.nn_class_loaded and nn_test:
             self.initialise_neural_networks()
 
         # Write our initial text into results.
@@ -1322,7 +1336,15 @@ print(mne.get_config('MNE_LOGGING_LEVEL'))
 mne.set_config('MNE_LOGGING_LEVEL', 'warning')
 print(mne.get_config('MNE_LOGGING_LEVEL'))
 test = ClassifierTester(subj_range=[1, 2], data_source='physionet', stim_select='hf', stim_type='imaginary',
-                        p_select='genetic', p_select_frac=0.1, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
-                        p_n_jobs=2, p_skip_mdm=True, tmin=-1, tmax=4)
+                        p_select='genetic', p_select_frac=1, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
+                        p_n_jobs=2, tmin=-1, tmax=4)
 test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=5)
-#test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False)
+test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False)
+#
+# for x in range(1, 110):
+#     fname = 'sub{sub}_hf_im_64ch'.format(sub=x)
+#     fpath = 'CLassifierTesterResults/Individual/HF-IM'
+#     test = ClassifierTester(subj_range=[x, x+1], data_source='physionet', stim_select='hf', stim_type='imaginary',
+#                             p_select='genetic', p_select_frac=0.1, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
+#                             p_n_jobs=4, p_skip_mdm=True, tmin=-1, tmax=4, f_name=fname, f_path=fpath)
+#     test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=5)
