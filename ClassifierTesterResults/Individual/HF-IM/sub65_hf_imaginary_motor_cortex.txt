@@ -1,0 +1,125 @@
+
+Performing parameter search on pipeline: CSP-KNNPerforming GASearchCV to find optimal parameter set...GASearchCV completed in 7.451sDisplaying Results...Best score: 0.667Best parameters set:	CSP__cov_est: 'epoch'	CSP__n_components: 2	KNN__algorithm: 'brute'	KNN__n_neighbors: 5	KNN__weights: 'uniform'	VAR__threshold: 0.0025
+Performing parameter search on pipeline: CSP-SVMPerforming GASearchCV to find optimal parameter set...GASearchCV completed in 26.353sDisplaying Results...Best score: 0.622Best parameters set:	CSP__cov_est: 'concat'	CSP__n_components: 2	SVC__C: 10.0	SVC__kernel: 'poly'	VAR__threshold: 0.0075
+Performing parameter search on pipeline: CSP-LDAPerforming GASearchCV to find optimal parameter set...GASearchCV completed in 4.906sDisplaying Results...Best score: 0.600Best parameters set:	CSP__cov_est: 'epoch'	CSP__n_components: 2	LDA__solver: 'svd'	VAR__threshold: 0.01
+Performing parameter search on pipeline: MDMPerforming GASearchCV to find optimal parameter set...GASearchCV completed in 2.024sDisplaying Results...Best score: 0.622Best parameters set:	COV__estimator: 'cov'	MDM__metric: 'euclid'
+Performing parameter search on pipeline: TS-LRPerforming GASearchCV to find optimal parameter set...GASearchCV completed in 6.553sDisplaying Results...Best score: 0.622Best parameters set:	COV__estimator: 'oas'	LR__C: 0.1	TS__metric: 'wasserstein'
+Performing parameter search on pipeline: CovCSP-LDAPerforming GASearchCV to find optimal parameter set...GASearchCV completed in 5.071sDisplaying Results...Best score: 0.600Best parameters set:	COV__estimator: 'lwf'	CSP__metric: 'riemann'	CSP__nfilter: 2	LDA__solver: 'svd'
+Performing parameter search on pipeline: CovCSP-LRPerforming GASearchCV to find optimal parameter set...GASearchCV completed in 3.561sDisplaying Results...Best score: 0.622Best parameters set:	COV__estimator: 'cov'	CSP__metric: 'euclid'	CSP__nfilter: 9	LR__C: 0.1
+All Parameter Searches Completed.
+Time Elapsed: 55.920695066452026
+
+Results for ClassifierTester Class on dataset 'physionet'
+Date/Time: 24-09-2021_13-25-18
+Settings:
+    Type = imaginary - hf
+    Subject Range = [65, 66]
+    Result Metrics = ['acc', 'f1', 'rec', 'prec', 'roc']
+    Gridsearch = genetic    Filter Bounds = (8.0, 35.0)
+    tmin = -1, tmax = 4
+    Channels = ['C3', 'Cz', 'C4']
+    Random State = 108400
+--INDIVIDUAL TEST--
+Parameters:
+    sk_test = True, sk_select = None
+    nn_test = False, nn_select = None
+    cross_val_times = 5
+--Subj No. 65: 
+Classifier: CSP-KNN
+fit_time = 0.05984110832214355
+score_time = 0.003988313674926758
+test_Accuracy = 0.6666666666666666
+train_Accuracy = 0.7388888888888888
+test_Recall = 0.6
+train_Recall = 0.704093567251462
+test_Precision = 0.7333333333333333
+train_Precision = 0.7669338504632621
+test_F1_Score = 0.6454545454545454
+train_F1_Score = 0.72909665603214
+test_ROC_AUC = 0.67
+train_ROC_AUC = 0.7775398463478959
+
+Classifier: CSP-SVM
+fit_time = 0.012462282180786132
+score_time = 0.0029917240142822267
+test_Accuracy = 0.6222222222222223
+train_Accuracy = 0.6333333333333334
+test_Recall = 0.63
+train_Recall = 0.6625730994152047
+test_Precision = 0.6016666666666667
+train_Precision = 0.6373182957393484
+test_F1_Score = 0.6043223443223443
+train_F1_Score = 0.6490927769875139
+test_ROC_AUC = 0.65
+train_ROC_AUC = 0.7336199977066851
+
+Classifier: CSP-LDA
+fit_time = 0.05964217185974121
+score_time = 0.002990436553955078
+test_Accuracy = 0.6
+train_Accuracy = 0.6055555555555556
+test_Recall = 0.47000000000000003
+train_Recall = 0.5321637426900585
+test_Precision = 0.6533333333333333
+train_Precision = 0.6371498599439775
+test_F1_Score = 0.5366666666666667
+train_F1_Score = 0.5794637551990494
+test_ROC_AUC = 0.6599999999999999
+train_ROC_AUC = 0.691002560868402
+
+Classifier: MDM
+fit_time = 0.0021941661834716797
+score_time = 0.003791189193725586
+test_Accuracy = 0.6222222222222221
+train_Accuracy = 0.6055555555555555
+test_Recall = 0.4600000000000001
+train_Recall = 0.4666666666666667
+test_Precision = 0.6533333333333333
+train_Precision = 0.6608058608058608
+test_F1_Score = 0.5311111111111112
+train_F1_Score = 0.5468304007820136
+test_ROC_AUC = 0.5
+train_ROC_AUC = 0.5
+
+Classifier: TS-LR
+fit_time = 0.009574413299560547
+score_time = 0.005784845352172852
+test_Accuracy = 0.6222222222222222
+train_Accuracy = 0.6055555555555556
+test_Recall = 0.8
+train_Recall = 0.6894736842105262
+test_Precision = 0.623174603174603
+train_Precision = 0.6074710236000558
+test_F1_Score = 0.6774203574203573
+train_F1_Score = 0.6238659673659674
+test_ROC_AUC = 0.6300000000000001
+train_ROC_AUC = 0.7039674349271872
+
+Classifier: CovCSP-LDA
+fit_time = 0.02293877601623535
+score_time = 0.005784368515014649
+test_Accuracy = 0.6
+train_Accuracy = 0.6166666666666667
+test_Recall = 0.51
+train_Recall = 0.5321637426900585
+test_Precision = 0.62
+train_Precision = 0.6532212885154062
+test_F1_Score = 0.5549206349206349
+train_F1_Score = 0.5860814022578729
+test_ROC_AUC = 0.65
+train_ROC_AUC = 0.7083075335397317
+
+Classifier: CovCSP-LR
+fit_time = 0.004587936401367188
+score_time = 0.003589344024658203
+test_Accuracy = 0.6222222222222222
+train_Accuracy = 0.5944444444444444
+test_Recall = 0.76
+train_Recall = 0.6894736842105262
+test_Precision = 0.6342857142857143
+train_Precision = 0.5962229437229437
+test_F1_Score = 0.6654545454545454
+train_F1_Score = 0.6180121349238996
+test_ROC_AUC = 0.65
+train_ROC_AUC = 0.6922371287696366
+

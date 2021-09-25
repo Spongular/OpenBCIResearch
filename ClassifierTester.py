@@ -453,11 +453,12 @@ class ClassifierTester:
         pipelines = self.__generate_pipelines()
 
         # Perform a gridsearch for each.
+        t0 = time()
         for pipe in pipelines:
             # if pipe[0] == 'MDM' and self.p_skip_mdm: #We don't perform gridsearch on MDM as it is too time consuming.
             #     self.sk_dict[pipe[0]] = pipe[1]
             #     continue
-            print("\nPerforming parameter search on pipeline: {pipe}".format(pipe=pipe[0]))
+            self.__print("\nPerforming parameter search on pipeline: {pipe}\n".format(pipe=pipe[0]))
             if self.p_select == 'gridsearch':
                 grid = self.__perform_gridsearch(pipe[1], pipe[2], data, labels, n_jobs=n_jobs, cross_val=5)
             elif self.p_select == 'genetic':
@@ -467,24 +468,26 @@ class ClassifierTester:
 
             # Add the best estimator to the dictionary using the name as a key.
             self.sk_dict[pipe[0]] = grid.best_estimator_
+        t1 = time() - t0
+        self.__print("\nAll Parameter Searches Completed.\nTime Elapsed: {n}\n\n".format(n=t1))
         return
 
     def __perform_gridsearch(self, classifier, parameters, data, labels, n_jobs=2, verbose=0, cross_val=5):
         # Here, we make use of the CVGridsearch method to check the
         # various combinations of parameters for the best result.
-        print("Performing GridSearchCV to find optimal parameter set...")
+        self.__print("\nPerforming GridSearchCV to find optimal parameter set...\n")
         t0 = time()
         grid_search = GridSearchCV(classifier, parameters, n_jobs=n_jobs, verbose=verbose, cv=cross_val)
         grid_search.fit(data, labels)
-        print("GridSearchCV completed in %0.3fs" % (time() - t0))
+        self.__print("GridSearchCV completed in %0.3fs\n" % (time() - t0))
 
         # And print out our results.
-        print("Displaying Results...")
-        print("Best score: %0.3f" % grid_search.best_score_)
-        print("Best parameters set:")
+        self.__print("Displaying Results...\n")
+        self.__print("Best score: %0.3f\n" % grid_search.best_score_)
+        self.__print("Best parameters set:\n")
         best_parameters = grid_search.best_estimator_.get_params()
         for param_name in sorted(parameters.keys()):
-            print("\t%s: %r" % (param_name, best_parameters[param_name]))
+            self.__print("\t%s: %r\n" % (param_name, best_parameters[param_name]))
         return grid_search
 
     def __perform_genetic(self, classifier, parameters, data, labels, n_jobs=2, verbose=False, cross_val=5):
@@ -494,7 +497,7 @@ class ClassifierTester:
         callback = DeltaThreshold(threshold=0.001, generations=3, metric='fitness_min')
 
         #Perform the genetic search
-        print("Performing GASearchCV to find optimal parameter set...")
+        self.__print("\nPerforming GASearchCV to find optimal parameter set...\n")
         t0 = time()
         genetic_search = GASearchCV(estimator=classifier,
                                  cv=cv,
@@ -503,15 +506,15 @@ class ClassifierTester:
                                  n_jobs=n_jobs,
                                  verbose=verbose)
         genetic_search.fit(data, labels, callbacks=callback)
-        print("GASearchCV completed in %0.3fs" % (time() - t0))
+        self.__print("GASearchCV completed in %0.3fs\n" % (time() - t0))
 
         #Now, print the results
-        print("Displaying Results...")
-        print("Best score: %0.3f" % genetic_search.best_score_)
-        print("Best parameters set:")
+        self.__print("Displaying Results...\n")
+        self.__print("Best score: %0.3f\n" % genetic_search.best_score_)
+        self.__print("Best parameters set:\n")
         best_parameters = genetic_search.best_estimator_.get_params()
         for param_name in sorted(parameters.keys()):
-            print("\t%s: %r" % (param_name, best_parameters[param_name]))
+            self.__print("\t%s: %r\n" % (param_name, best_parameters[param_name]))
         return genetic_search
 
     ##------------------------------------------------------------------------------------------------------------------
@@ -676,7 +679,7 @@ class ClassifierTester:
         # Assemble classifiers
         if params is None:
             lda = LinearDiscriminantAnalysis()
-            var = VarianceThreshold(threshold=(.9 * (1 - .9)))
+            var = VarianceThreshold(threshold=0)
             csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
         elif type(params) is dict:
             lda = LinearDiscriminantAnalysis(solver=params['LDA__solver'])
@@ -717,7 +720,7 @@ class ClassifierTester:
         # Assemble classifiers
         if params is None:
             svc = svm.SVC()
-            var = VarianceThreshold(threshold=(.9 * (1 - .9)))
+            var = VarianceThreshold(threshold=0)
             csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
         elif type(params) is dict:
             svc = svm.SVC(kernel=params['SVC__kernel'], C=params['SVC__C'])
@@ -731,7 +734,7 @@ class ClassifierTester:
         # Form the parameter dictionary
         if self.p_select == 'genetic':
             parameters = {
-                'SVC__C': Categorical([0.00001, 0.0001, 0.001, 0.01, 0.1, 0, 1, 10, 100, 1000, 10000, 100000]),
+                'SVC__C': Categorical([0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000]),
                 'SVC__kernel': Categorical(['linear', 'poly', 'rbf', 'sigmoid']),
                 'CSP__n_components': Integer(2, (max_csp_components + 1)),
                 'CSP__cov_est': Categorical(['concat', 'epoch']),
@@ -739,7 +742,7 @@ class ClassifierTester:
             }
         else:
             parameters = {
-                'SVC__C': np.logspace(-5, 5, 10).tolist(),
+                'SVC__C': [0.00001, 0.0001, 0.001, 0.01, 0.1, 0, 1, 10, 100, 1000, 10000, 100000],
                 'SVC__kernel': ('linear', 'poly', 'rbf', 'sigmoid'),
                 'CSP__n_components': range(2, max_csp_components + 1),
                 'CSP__cov_est': ('concat', 'epoch'),
@@ -759,7 +762,7 @@ class ClassifierTester:
         # Assemble classifiers
         if params is None:
             knn = KNeighborsClassifier()
-            var = VarianceThreshold(threshold=(.9 * (1 - .9)))
+            var = VarianceThreshold(threshold=0)
             csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
         elif type(params) is dict:
             knn = KNeighborsClassifier(n_neighbors=params['KNN__n_neighbors'], weights=params['KNN__weights'])
@@ -819,7 +822,7 @@ class ClassifierTester:
         if self.p_select == 'genetic':
             parameters = {
                 'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'corr']),
-                'MDM__metric': Categorical(['riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'])
+                'MDM__metric': Categorical(['riemann', 'logeuclid', 'euclid', 'wasserstein'])
             }
         else:
             parameters = {
@@ -845,12 +848,14 @@ class ClassifierTester:
         if self.p_select == 'genetic':
             parameters = {
                 'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'corr']),
-                'TS__metric': Categorical(['riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'])
+                'LR__C': Categorical([0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000]),
+                'TS__metric': Categorical(['riemann', 'logeuclid', 'euclid', 'wasserstein'])
             }
         else:
             parameters = {
                 'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'corr'),
-                'TS__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
+                'LR__C': [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000],
+                'TS__metric': ('riemann', 'logeuclid', 'euclid', 'wasserstein')
             }
         return "TS-LR", clf, parameters
 
@@ -876,14 +881,14 @@ class ClassifierTester:
             parameters = {
                 'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'corr']),
                 'CSP__nfilter': Integer(2, max_n_filters),
-                'CSP__metric': Categorical(['riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein']),
+                'CSP__metric': Categorical(['riemann', 'logeuclid', 'euclid', 'wasserstein']),
                 'LDA__solver': Categorical(['svd', 'lsqr', 'eigen'])
             }
         else:
             parameters = {
                 'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'corr'),
                 'CSP__nfilter': range(2, max_n_filters),
-                'CSP__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'),
+                'CSP__metric': ('riemann', 'logeuclid', 'euclid', 'wasserstein'),
                 'LDA__solver': ('svd', 'lsqr', 'eigen')
             }
         return "CovCSP-LDA", clf, parameters
@@ -909,11 +914,13 @@ class ClassifierTester:
             parameters = {
                 'COV__estimator': Categorical(['cov', 'scm', 'lwf', 'oas', 'corr']),
                 'CSP__nfilter': Integer(2, max_n_filters),
+                'LR__C': Categorical([0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000]),
                 'CSP__metric': Categorical(['riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein'])
             }
         else:
             parameters = {
                 'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'corr'),
+                'LR__C': [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000],
                 'CSP__nfilter': range(2, max_n_filters),
                 'CSP__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
             }
@@ -928,11 +935,11 @@ class ClassifierTester:
         #This one is pretty simple, and we don't change up many parameters.
         #Additionally, the
         if params is None:
-            fb = FilterBank(make_pipeline(Covariances(estimator="oas"), CSP(nfilter=4)))
+            fb = FilterBank(make_pipeline(Covariances(estimator="oas"), CovCSP(nfilter=4)))
             kb = SelectKBest(score_func=mutual_info_classif, k=10)
             svc = svm.SVC(kernel="linear")
         elif type(params) is dict:
-            fb = FilterBank(make_pipeline(Covariances(estimator="oas"), CSP(nfilter=4)))
+            fb = FilterBank(make_pipeline(Covariances(estimator="oas"), CovCSP(nfilter=4)))
             kb = SelectKBest(score_func=mutual_info_classif, k=10)
             svc = svm.SVC(kernel=params['SVC__kernel'], C=params['SVC__C'])
         else:
@@ -940,12 +947,12 @@ class ClassifierTester:
         clf = Pipeline([('FB', fb), ('KB', kb), ('SVC', svc)])
         if self.p_select == 'genetic':
             parameters = {
-                'SVC__C': Continuous(0.00001, 100000, distribution='uniform'),
+                'SVC__C': Categorical([0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000]),
                 'SVC__kernel': Categorical(['linear', 'poly', 'rbf', 'sigmoid'])
             }
         else:
             parameters = {
-                'SVC__C': np.logspace(-5, 5, 10).tolist(),
+                'SVC__C': [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000],
                 'SVC__kernel': ('linear', 'poly', 'rbf', 'sigmoid')
             }
         return "FBCSP-SVM", clf, parameters
@@ -1253,7 +1260,6 @@ class ClassifierTester:
         data, labels = shuffle(data, labels)
 
         #Perform the cross validation.
-        rand_state = random.randint(0,99999)
         results = self.__stratified_cross_val(data, labels, cross_val_times)
         return results
 
@@ -1332,14 +1338,14 @@ class ClassifierTester:
 
 
 
-print(mne.get_config('MNE_LOGGING_LEVEL'))
-mne.set_config('MNE_LOGGING_LEVEL', 'warning')
-print(mne.get_config('MNE_LOGGING_LEVEL'))
-test = ClassifierTester(subj_range=[1, 2], data_source='physionet', stim_select='hf', stim_type='imaginary',
-                        p_select='genetic', p_select_frac=1, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
-                        p_n_jobs=2, tmin=-1, tmax=4)
-test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=5)
-test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False)
+# print(mne.get_config('MNE_LOGGING_LEVEL'))
+# mne.set_config('MNE_LOGGING_LEVEL', 'warning')
+# print(mne.get_config('MNE_LOGGING_LEVEL'))
+# test = ClassifierTester(subj_range=[1, 2], data_source='physionet', stim_select='hf', stim_type='imaginary',
+#                         p_select='genetic', p_select_frac=1, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
+#                         p_n_jobs=2, tmin=-1, tmax=4)
+# test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=5)
+# test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False)
 #
 # for x in range(1, 110):
 #     fname = 'sub{sub}_hf_im_64ch'.format(sub=x)

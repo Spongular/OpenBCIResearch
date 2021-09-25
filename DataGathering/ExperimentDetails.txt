@@ -1,6 +1,6 @@
 
 Subjects:
-    -Subject 1: Male, 24 years old, right-handed, no prior BCI experience.
+    -Subject 1: Male, 25 years old, right-handed, no prior BCI experience.
         -Subject had often consumed caffeine within 1-2 hours prior to recording.
         -Subject reported difficulty in maintaining focus on stimuli during imagined activity. Additionally, subject
         reported difficulty in effectively imagining movement consistently and without accidentally focusing on other
@@ -19,6 +19,13 @@ Subjects:
         -Subject did not report any strong eye-strain from focus.
         -Subject did report difficulty in maintaining focus on stim window over other on-screen elements.
         -Subject had not consumed caffeine or other stimulants in the morning prior to recording.
+    -Subject 3: Male, 25 years old, right handed, no prior BCI Experience.
+        -Avoided blinking during stim.
+        -Did not focus entirely on the grid, eyes roamed, but kept grid in peripheral to see stimulus.
+        -Mentioned that he felt like he was anticipating the stimulus.
+        -Did not report strong eye-strain.
+        -Had consumed caffeine prior to recording.
+
 
 Subject Instructions:
     Each subject was instructed to remain relaxed until stimulus onset.
