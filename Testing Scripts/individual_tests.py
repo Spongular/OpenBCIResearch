@@ -3,13 +3,13 @@ import random
 
 #The sets of stimuli/operations to test.
 combinations = [('hf', 'imaginary', 'HF-IM'), ('hf', 'movement', 'HF-MM'),
-                ('lr', 'imaginary', 'LR-IM')]#, ('lr', 'movement', 'LR-MM')]
+                ('lr', 'imaginary', 'LR-IM'), ('lr', 'movement', 'LR-MM')]
+
 #The subjects to ignore due to bad data.
 exceptions = [38, 80, 88, 89, 92, 100, 104]
 
 #Random state must be equal to compare effectively.
-#rand = random.randint(1, 999999)
-rand = 108400
+rand = random.randint(1, 999999)
 r = range(1, 110)
 
 #Full 64 Channels
@@ -25,11 +25,11 @@ for combo in combinations:
         fpath = 'E:/PycharmProjects/OpenBCIResearch/CLassifierTesterResults/Individual/{folder}'.format(folder=combo[2])
 
         #Form our testing class and run it.
-        # test = ClassifierTester(subj_range=[x, x+1], data_source='physionet', stim_select=combo[0], stim_type=combo[1],
-        #                         p_select='genetic', p_select_frac=1, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
-        #                         p_n_jobs=-1, tmin=-1, tmax=4, f_name=fname, f_path=fpath, random_state=rand)
-        # test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=5)
-        # del test
+        test = ClassifierTester(subj_range=[x, x+1], data_source='physionet', stim_select=combo[0], stim_type=combo[1],
+                                p_select='genetic', p_select_frac=1, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
+                                p_n_jobs=-1, tmin=-1, tmax=4, f_name=fname, f_path=fpath, random_state=rand)
+        test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=5)
+        del test
 
         #Perform the same for the filter bank method
         fname = fname + '_fb'
@@ -55,12 +55,12 @@ for combo in combinations:
         fpath = 'E:/PycharmProjects/OpenBCIResearch/CLassifierTesterResults/Individual/{folder}'.format(folder=combo[2])
 
         #Form our testing class and run it.
-        # test = ClassifierTester(subj_range=[x, x+1], data_source='physionet', stim_select=combo[0], stim_type=combo[1],
-        #                         p_select='genetic', p_select_frac=1, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
-        #                         p_n_jobs=-1, tmin=-1, tmax=4, f_name=fname, f_path=fpath,
-        #                         ch_list=['Fp1', 'Fp2', 'O1', 'O2'], random_state=rand)
-        # test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=5)
-        # del test
+        test = ClassifierTester(subj_range=[x, x+1], data_source='physionet', stim_select=combo[0], stim_type=combo[1],
+                                p_select='genetic', p_select_frac=1, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
+                                p_n_jobs=-1, tmin=-1, tmax=4, f_name=fname, f_path=fpath,
+                                ch_list=['Fp1', 'Fp2', 'O1', 'O2'], random_state=rand)
+        test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=5)
+        del test
 
         #Perform the same for the filter bank method
         fname = fname + '_fb'
@@ -86,12 +86,12 @@ for combo in combinations:
         fpath = 'E:/PycharmProjects/OpenBCIResearch/CLassifierTesterResults/Individual/{folder}'.format(folder=combo[2])
 
         #Form our testing class and run it.
-        # test = ClassifierTester(subj_range=[x, x+1], data_source='physionet', stim_select=combo[0], stim_type=combo[1],
-        #                         p_select='genetic', p_select_frac=1, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
-        #                         p_n_jobs=-1, tmin=-1, tmax=4, f_name=fname, f_path=fpath, ch_list=['C3', 'Cz', 'C4'],
-        #                         random_state=rand)
-        # test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=5)
-        # del test
+        test = ClassifierTester(subj_range=[x, x+1], data_source='physionet', stim_select=combo[0], stim_type=combo[1],
+                                p_select='genetic', p_select_frac=1, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
+                                p_n_jobs=-1, tmin=-1, tmax=4, f_name=fname, f_path=fpath, ch_list=['C3', 'Cz', 'C4'],
+                                random_state=rand)
+        test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=5)
+        del test
 
         #Perform the same for the filter bank method
         fname = fname + '_fb'

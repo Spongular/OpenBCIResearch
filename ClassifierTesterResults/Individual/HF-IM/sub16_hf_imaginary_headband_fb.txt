@@ -1,0 +1,44 @@
+
+Performing parameter search on pipeline: FBCSP-SVM
+
+Performing GASearchCV to find optimal parameter set...
+GASearchCV completed in 40.172s
+Displaying Results...
+Best score: 0.600
+Best parameters set:
+	SVC__C: 10000.0
+	SVC__kernel: 'sigmoid'
+
+All Parameter Searches Completed.
+Time Elapsed: 40.17205452919006
+
+Results for ClassifierTester Class on dataset 'physionet'
+Date/Time: 26-09-2021_14-17-25
+Settings:
+    Type = imaginary - hf
+    Subject Range = [16, 17]
+    Result Metrics = ['acc', 'f1', 'rec', 'prec', 'roc']
+    Gridsearch = genetic    Filter Bounds = (8.0, 35.0)
+    tmin = -1, tmax = 4
+    Channels = ['Fp1', 'Fp2', 'O1', 'O2']
+    Random State = 108400
+--INDIVIDUAL TEST--
+Parameters:
+    sk_test = True, sk_select = None
+    nn_test = False, nn_select = None
+    cross_val_times = 5
+--Subj No. 16: 
+Classifier: FBCSP-SVM
+fit_time = 0.10003061294555664
+score_time = 0.01605067253112793
+test_Accuracy = 0.6
+train_Accuracy = 0.48888888888888893
+test_Recall = 0.38
+train_Recall = 0.45294117647058824
+test_Precision = 0.6333333333333333
+train_Precision = 0.45294117647058824
+test_F1_Score = 0.46190476190476193
+train_F1_Score = 0.45294117647058824
+test_ROC_AUC = 0.6
+train_ROC_AUC = 0.4691273219814242
+

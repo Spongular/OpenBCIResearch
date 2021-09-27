@@ -531,13 +531,16 @@ class ClassifierTester:
     def __generate_pipelines(self):
         # The method will return a tuple of a name, pipeline and the gridsearch parameters.
         # i.e. format is ("name", pipeline, params_dict)
-        pipelines = [self.__csp_knn(),
-                     self.__csp_svm(),
-                     self.__csp_lda(),
-                     self.__mdm(),
-                     self.__ts_lr(),
-                     self.__covcsp_lda(),
-                     self.__covcsp_lr()]
+        if self.filter_bank:
+            pipelines = [self.__fbcsp_svm()]
+        else:
+            pipelines = [self.__csp_knn(),
+                         self.__csp_svm(),
+                         self.__csp_lda(),
+                         self.__mdm(),
+                         self.__ts_lr(),
+                         self.__covcsp_lda(),
+                         self.__covcsp_lr()]
         return pipelines
 
     def __generate_pipelines_from_dict(self, parameter_dict):
@@ -931,7 +934,7 @@ class ClassifierTester:
     ##------------------------------------------------------------------------------------------------------------------
 
     #For filter bank, we need the data in the form (trial, channel, times, filter).
-    def __fbcsp_svm(self, params):
+    def __fbcsp_svm(self, params=None):
         #This one is pretty simple, and we don't change up many parameters.
         #Additionally, the
         if params is None:

@@ -51,6 +51,10 @@ def preprocess_highpass(raw, min=1., fir_design='firwin', notch_val=60):
     return raw
 
 def process_filter_bank(raw, filters, tmin=0., tmax=4., pick_list=[], events=None, event_id=None):
+    # Fix our settings for the raw.
+    eegbci.standardize(raw)
+    raw.set_montage("standard_1020", match_case=False)
+    raw.rename_channels(lambda s: s.strip("."))
     #Grab events and picks.
     if events is None or event_id is None:
         events, event_id = events_from_annotations(raw, event_id=dict(T1=2, T2=3))
@@ -62,7 +66,7 @@ def process_filter_bank(raw, filters, tmin=0., tmax=4., pick_list=[], events=Non
     data = []
     for f in filters:
         fmin, fmax = f
-        raw_f = raw.copy().filter(fmin, fmax, method="iir", picks=picks, verbose=False)
+        raw_f = raw.copy().filter(fmin, fmax, method="iir", verbose=False, picks=picks)
         epochs = Epochs(raw_f, events, event_id, tmin, tmax, picks=picks, baseline=None, preload=True,
                         verbose=False)
         data.append(epochs.get_data())
