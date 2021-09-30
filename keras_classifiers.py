@@ -14,6 +14,7 @@ from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.constraints import max_norm
 from sklearn.model_selection import StratifiedKFold
+from tensorflow.keras import backend as K
 
 
 def feedforward_nn(data_shape, n_classes=2, model_shape=[64, 32, 16, 8], d_rate=0.2, b_norm=False):
@@ -215,7 +216,7 @@ def perform_crossval(X, Y, model, n_splits, epochs, batch_size, n_classes=2, opt
 #Altered it to accept input [Chans, Samples, ThirdAxis] rather than [Chans, Samples, 1]
 def EEGNet(nb_classes, Chans=64, Samples=128, ThirdAxis=1,
            dropoutRate=0.5, kernLength=64, F1=8,
-           D=2, F2=16, norm_rate=0.25, dropoutType='Dropout'):
+           D=2, F2=16, norm_rate=0.25, dropoutType='Dropout', l_rate=1e-4):
     """ Keras Implementation of EEGNet
     http://iopscience.iop.org/article/10.1088/1741-2552/aace8c/meta
     Note that this implements the newest version of EEGNet and NOT the earlier
@@ -309,11 +310,13 @@ def EEGNet(nb_classes, Chans=64, Samples=128, ThirdAxis=1,
                   kernel_constraint=max_norm(norm_rate))(flatten)
     softmax = Activation('softmax', name='softmax')(dense)
 
-    return Model(inputs=input1, outputs=softmax, name="EEGNet-MilResearch")
+    opt = Adam(lr=l_rate)
+    model = Model(inputs=input1, outputs=softmax, name="EEGNet-MilResearch")
+    return model, opt
 
 
 def DeepConvNet(nb_classes, Chans=64, Samples=256,
-                dropoutRate=0.5):
+                dropoutRate=0.5, l_rate=1e-4):
     """ Keras implementation of the Deep Convolutional Network as described in
     Schirrmeister et. al. (2017), Human Brain Mapping.
 
@@ -374,8 +377,9 @@ def DeepConvNet(nb_classes, Chans=64, Samples=256,
 
     dense = Dense(nb_classes, kernel_constraint=max_norm(0.5))(flatten)
     softmax = Activation('softmax')(dense)
-
-    return Model(inputs=input_main, outputs=softmax)
+    model = Model(inputs=input_main, outputs=softmax)
+    opt = Adam(lr=l_rate)
+    return model, opt
 
 #This is based on a combination of the work found at: https://github.com/rootskar/EEGMotorImagery/blob/master/EEGModels.py
 #And the slightly modified EEGNet implementation found above.
@@ -487,4 +491,59 @@ def fusionEEGNet(n_classes, chans=64, samples=128, third_axis=1, l_rate=0.01,
     model = Model(inputs=input1, outputs=softmax, name="FusionEEGNet")
     opt = Adam(lr=l_rate)
     model.summary()
+    return model, opt
+
+
+# need these for ShallowConvNet
+def square(x):
+    return K.square(x)
+
+
+def log(x):
+    return K.log(K.clip(x, min_value=1e-7, max_value=10000))
+
+
+def ShallowConvNet(nb_classes, Chans=64, Samples=128, dropoutRate=0.5, l_rate=1e-4):
+    """ Keras implementation of the Shallow Convolutional Network as described
+    in Schirrmeister et. al. (2017), Human Brain Mapping.
+
+    Assumes the input is a 2-second EEG signal sampled at 128Hz. Note that in
+    the original paper, they do temporal convolutions of length 25 for EEG
+    data sampled at 250Hz. We instead use length 13 since the sampling rate is
+    roughly half of the 250Hz which the paper used. The pool_size and stride
+    in later layers is also approximately half of what is used in the paper.
+
+    Note that we use the max_norm constraint on all convolutional layers, as
+    well as the classification layer. We also change the defaults for the
+    BatchNormalization layer. We used this based on a personal communication
+    with the original authors.
+
+                     ours        original paper
+    pool_size        1, 35       1, 75
+    strides          1, 7        1, 15
+    conv filters     1, 13       1, 25
+
+    Note that this implementation has not been verified by the original
+    authors. We do note that this implementation reproduces the results in the
+    original paper with minor deviations.
+    """
+
+    # start the model
+    input_main = Input((Chans, Samples, 1))
+    block1 = Conv2D(40, (1, 13),
+                    input_shape=(Chans, Samples, 1),
+                    kernel_constraint=max_norm(2., axis=(0, 1, 2)))(input_main)
+    block1 = Conv2D(40, (Chans, 1), use_bias=False,
+                    kernel_constraint=max_norm(2., axis=(0, 1, 2)))(block1)
+    block1 = BatchNormalization(epsilon=1e-05, momentum=0.1)(block1)
+    block1 = Activation(square)(block1)
+    block1 = AveragePooling2D(pool_size=(1, 35), strides=(1, 7))(block1)
+    block1 = Activation(log)(block1)
+    block1 = Dropout(dropoutRate)(block1)
+    flatten = Flatten()(block1)
+    dense = Dense(nb_classes, kernel_constraint=max_norm(0.5))(flatten)
+    softmax = Activation('softmax')(dense)
+
+    opt = Adam(lr=l_rate)
+    model = Model(inputs=input_main, outputs=softmax)
     return model, opt

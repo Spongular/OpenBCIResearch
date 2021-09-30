@@ -60,7 +60,7 @@ from sklearn_genetic.space import Categorical, Integer, Continuous
 from sklearn_genetic.callbacks import ConsecutiveStopping, DeltaThreshold
 
 # keras imports
-from tensorflow.python.keras.callbacks import ModelCheckpoint, LearningRateScheduler
+from tensorflow.python.keras.callbacks import ModelCheckpoint, LearningRateScheduler, EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.utils import to_categorical
 
 #MOABB imports
@@ -525,7 +525,9 @@ class ClassifierTester:
         #This method will return a tuple of name, compiled NN model and callbacks
         #i.e. format is ("name", model, fit_details)
         models = [self.__eegnet(data_shape=data_shape),
-                  self.__fusion_eegnet(data_shape=data_shape)]
+                  self.__fusion_eegnet(data_shape=data_shape),
+                  self.__deep_convnet(data_shape=data_shape),
+                  self.__shallow_convnet(data_shape=data_shape)]
         return models
 
     def __generate_pipelines(self):
@@ -614,11 +616,13 @@ class ClassifierTester:
                 return self.nn_dict
 
         if d_shape is None:
-            data_shape = self.sub_dict[0]['data'].shape + (d_fourth_axis,)
+            data_shape = self.sub_dict[list(self.sub_dict.keys())[0]]['data'].shape + (d_fourth_axis,)
         else:
             data_shape = d_shape
-        models = [self.__eegnet(data_shape=data_shape, chan=data_shape[1]),
-                  self.__fusion_eegnet(data_shape=data_shape)]
+        models = [self.__eegnet(data_shape=data_shape),
+                  self.__fusion_eegnet(data_shape=data_shape),
+                  self.__deep_convnet(data_shape=data_shape),
+                  self.__shallow_convnet(data_shape=data_shape)]
         for model in models:
             self.nn_dict[model[0]] = (model[1], model[2])
         return self.nn_dict
@@ -629,6 +633,7 @@ class ClassifierTester:
             self.__print("Classifier: {n}\n".format(n=name))
             for metric in results[name].keys():
                 self.__print("{m} = {r}\n".format(m=metric, r=np.mean(results[name][metric])))
+                self.__print("{m}_std = {r}\n".format(m=metric, r=np.std(results[name][metric])))
             self.__print("\n")
         return
 
@@ -638,6 +643,7 @@ class ClassifierTester:
             self.__print("Classifier: {n}\n".format(n=name))
             for metric in results[name].keys():
                 self.__print("{m} = {r}\n".format(m=metric, r=results[name][metric]))
+                self.__print("{m}_std = {r}\n".format(m=metric, r=np.std(results[name][metric])))
             self.__print("\n")
         return
 
@@ -966,17 +972,23 @@ class ClassifierTester:
 
     #An Accurate EEGNet-based Motor-Imagery Brain–Computer Interface for Low-Power Edge Computing
     #Available at: https://arxiv.org/abs/2004.00077
-    def __eegnet(self, data_shape, dropout=0.5, chan=4, n_classes=2, lr_scheduler=True, check_p=False):
+    def __eegnet(self, data_shape, dropout=0.0, n_classes=2, lr_scheduler=True, check_p=False, e_stop=True,
+                 l_rate=0.01):
 
         #First, construct the model and compile it.
-        model, opt = keras_classifiers.convEEGNet(input_shape=data_shape, chan=chan, n_classes=n_classes, d_rate=dropout,
-                                                  first_tf_size=128)
+        model, opt = keras_classifiers.convEEGNet(input_shape=data_shape, chan=data_shape[1], n_classes=n_classes,
+                                                  d_rate=dropout, first_tf_size=64, l_rate=l_rate)
         model.compile(loss='categorical_crossentropy', optimizer=opt,
                       metrics=['accuracy'])
 
         #This is the list of callback operations to perform. These occur mid-training and allow us to
         #change parameters or save weights as we go.
         callbacks=[]
+
+        #Early stopping allows us to end learning after things start to slow down.
+        if e_stop:
+            earlystop = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, restore_best_weights=True)
+            callbacks.append(earlystop)
 
         #The learning rate scheduler allows us to alter the learning rate as the epochs increase.
         if lr_scheduler:
@@ -986,7 +998,7 @@ class ClassifierTester:
         if check_p:
             #Create the filepath
             f1 = "NN_Weights/convEEGNet/ClassifierTester/{chan}-Channel-{datetime}-{dropout}-dropout".format(
-                chan=chan, datetime=self.datetime, dropout=dropout)
+                chan=data_shape[1], datetime=self.datetime, dropout=dropout)
             filepath = f1 + "{epoch:02d}-{val_accuracy:.2f}.h5"
 
             #Form the checkpointer and callback list.
@@ -1003,11 +1015,146 @@ class ClassifierTester:
 
         return "eegnet", model, fit_dict
 
+    # An implementation of Deep ConvNet.
+    # Available at: https://onlinelibrary.wiley.com/doi/full/10.1002/hbm.23730
+    def __deep_convnet(self, data_shape, dropout=0.5, n_classes=2, lr_scheduler=True, check_p=False,
+                       e_stop=True, lr_plateau=False, l_rate=0.001):
+
+        # First, construct the model and compile it.
+        model, opt = keras_classifiers.DeepConvNet(nb_classes=n_classes, Chans=data_shape[1], Samples=data_shape[2],
+                                                   dropoutRate=dropout, l_rate=l_rate)
+        model.compile(loss='categorical_crossentropy', optimizer=opt,
+                      metrics=['accuracy'])
+
+        # This is the list of callback operations to perform. These occur mid-training and allow us to
+        # change parameters or save weights as we go.
+        callbacks = []
+
+        # Early stopping allows us to end learning after things start to slow down.
+        if e_stop:
+            earlystop = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, restore_best_weights=True)
+            callbacks.append(earlystop)
+
+        # The learning rate scheduler allows us to alter the learning rate as the epochs increase.
+        if lr_scheduler:
+            scheduler = LearningRateScheduler(keras_classifiers.EEGNetScheduler)
+            callbacks.append(scheduler)
+
+        if lr_plateau:
+            plat = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_delta=1e-4, verbose=1)
+            callbacks.append(plat)
+        # If using a checkpointer, set it up here.
+        if check_p:
+            # Create the filepath
+            f1 = "NN_Weights/convEEGNet/ClassifierTester/{chan}-Channel-{datetime}-{dropout}-dropout".format(
+                chan=data_shape[1], datetime=self.datetime, dropout=dropout)
+            filepath = f1 + "{epoch:02d}-{val_accuracy:.2f}.h5"
+
+            # Form the checkpointer and callback list.
+            checkpointer = ModelCheckpoint(filepath=filepath, verbose=1,
+                                           save_best_only=True)
+            callbacks.append(checkpointer)
+
+        # This is the dictionary of details for the fit method.
+        fit_dict = {
+            'batch_size': 16,
+            'epochs': 100,
+            'callbacks': callbacks
+        }
+
+        return "deep_convnet", model, fit_dict
+
+    # An implementation of Deep ConvNet.
+    # Available at: https://onlinelibrary.wiley.com/doi/full/10.1002/hbm.23730
+    def __shallow_convnet(self, data_shape, dropout=0.5, n_classes=2, lr_scheduler=True, check_p=False,
+                       e_stop=True, lr_plateau=False, l_rate=1e-4):
+
+        # First, construct the model and compile it.
+        model, opt = keras_classifiers.ShallowConvNet(nb_classes=n_classes, Chans=data_shape[1], Samples=data_shape[2],
+                                                   dropoutRate=dropout, l_rate=l_rate)
+        model.compile(loss='categorical_crossentropy', optimizer=opt,
+                      metrics=['accuracy'])
+
+        # This is the list of callback operations to perform. These occur mid-training and allow us to
+        # change parameters or save weights as we go.
+        callbacks = []
+
+        # Early stopping allows us to end learning after things start to slow down.
+        if e_stop:
+            earlystop = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, restore_best_weights=True)
+            callbacks.append(earlystop)
+
+        # The learning rate scheduler allows us to alter the learning rate as the epochs increase.
+        if lr_scheduler:
+            scheduler = LearningRateScheduler(keras_classifiers.EEGNetScheduler)
+            callbacks.append(scheduler)
+
+        if lr_plateau:
+            plat = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_delta=1e-4, verbose=1)
+            callbacks.append(plat)
+        # If using a checkpointer, set it up here.
+        if check_p:
+            # Create the filepath
+            f1 = "NN_Weights/convEEGNet/ClassifierTester/{chan}-Channel-{datetime}-{dropout}-dropout".format(
+                chan=data_shape[1], datetime=self.datetime, dropout=dropout)
+            filepath = f1 + "{epoch:02d}-{val_accuracy:.2f}.h5"
+
+            # Form the checkpointer and callback list.
+            checkpointer = ModelCheckpoint(filepath=filepath, verbose=1,
+                                           save_best_only=True)
+            callbacks.append(checkpointer)
+
+        # This is the dictionary of details for the fit method.
+        fit_dict = {
+            'batch_size': 16,
+            'epochs': 100,
+            'callbacks': callbacks
+        }
+
+        return "shallow_convnet", model, fit_dict
+
     #Fusion Convolutional Neural Network for Cross-Subject EEG Motor Imagery Classification
     #Available at: https://research.tees.ac.uk/en/publications/fusion-convolutional-neural-network-for-cross-subject-eeg-motor-i
-    def __fusion_eegnet(self, data_shape, dropout=0.5, chan=4, n_classes=2, lr_scheduler=True, check_p=False):
-        model = None
-        fit_dict = None
+    def __fusion_eegnet(self, data_shape, dropout=0.5, n_classes=2, lr_scheduler=True, check_p=False,
+                        e_stop=True, l_rate=1E-4):
+        #Form the classifier
+        model, opt = keras_classifiers.fusionEEGNet(n_classes=n_classes, chans=data_shape[1], samples=data_shape[2],
+                                                    third_axis=data_shape[3], l_rate=l_rate, dropout_rate=dropout)
+        model.compile(loss='categorical_crossentropy', optimizer=opt,
+                      metrics=['accuracy'])
+
+        # This is the list of callback operations to perform. These occur mid-training and allow us to
+        # change parameters or save weights as we go.
+        callbacks = []
+
+        # Early stopping allows us to end learning after things start to slow down.
+        if e_stop:
+            earlystop = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, restore_best_weights=True)
+            callbacks.append(earlystop)
+
+        # The learning rate scheduler allows us to alter the learning rate as the epochs increase.
+        if lr_scheduler:
+            scheduler = LearningRateScheduler(keras_classifiers.EEGNetScheduler)
+            callbacks.append(scheduler)
+        # If using a checkpointer, set it up here.
+        if check_p:
+            # Create the filepath
+            f1 = "NN_Weights/convEEGNet/ClassifierTester/{chan}-Channel-{datetime}-{dropout}-dropout".format(
+                chan=data_shape[1], datetime=self.datetime, dropout=dropout)
+            filepath = f1 + "{epoch:02d}-{val_accuracy:.2f}.h5"
+
+            # Form the checkpointer and callback list.
+            checkpointer = ModelCheckpoint(filepath=filepath, verbose=1,
+                                           save_best_only=True)
+            callbacks.append(checkpointer)
+
+        # This is the dictionary of details for the fit method.
+        fit_dict = {
+            'batch_size': 32,
+            'epochs': 100,
+            'callbacks': callbacks
+        }
+
         return "fusion_eegnet", model, fit_dict
 
     ##------------------------------------------------------------------------------------------------------------------
@@ -1066,6 +1213,9 @@ class ClassifierTester:
         if not self.nn_class_loaded:
             self.initialise_neural_networks()
 
+        if batch_size > len(self.sub_dict.keys()):
+            batch_size = len(self.sub_dict.keys())
+
         #Write our initial text into results.
         self.__print("--BATCH TEST--\n")
         self.__print("Parameters:\n")
@@ -1076,7 +1226,6 @@ class ClassifierTester:
         self.__print("    train_test_split = {tts}, split_subjects = {ss}\n".format(tts=train_test_split,
                                                                                               ss=split_subject))
         self.__print("    cross_val_times = {cvt}\n".format(cvt=cross_val_times))
-
         results = []
         for x in range(0, n_times):
             if split_subject:
@@ -1100,9 +1249,9 @@ class ClassifierTester:
     #Trains and tests each classifier on incrementally growing randomised batches of subjects.
     def run_increment_batch_test(self, batch_size, incr_value, max_batch_size=None, sk_test=True, nn_test=True,
                                  sk_select=None, nn_select=None, test_split=0.2, split_subject=False,
-                                 cross_val_times=10):
+                                 n_times=10):
         # Check parameters.
-        if cross_val_times <= 3:
+        if n_times <= 3:
             raise Exception("Error: Attribute 'cross_val_times' must be greater than or equal to 3.")
         if batch_size <= 1:
             raise Exception("Error: Attribute 'batch_size' must be greater than 1.")
@@ -1110,6 +1259,11 @@ class ClassifierTester:
             raise Exception("Error: Attribute 'max_batch_size' must be greater than attribute 'batch_size'.")
         if test_split < 0.1 or test_split > 0.5:
             raise Exception("Error: Attribute 'test_split' must be a value between 0.1 and 0.5 inclusive.")
+        if max_batch_size > len(self.sub_dict.keys()):
+            max_batch_size = len(self.sub_dict.keys())
+            self.__print(
+                "\nWarning: parameter 'max_batch_size' has been decreased to the total subject count {num}\n".format(
+                    num=max_batch_size))
 
         # These are internal switches to control which classifiers are used in the train/test internal methods.
         self.sk_test = sk_test
@@ -1133,7 +1287,7 @@ class ClassifierTester:
         self.__print("    nn_test = {nn}, nn_select = {nns}\n".format(nn=nn_test, nns=nn_select))
         self.__print("    train_test_split = {tts}, split_subjects = {ss}\n".format(tts=train_test_split,
                                                                                     ss=split_subject))
-        self.__print("    cross_val_times = {cvt}\n".format(cvt=cross_val_times))
+        self.__print("    cross_val_times = {cvt}\n".format(cvt=n_times))
 
         #Now, we perform the test and increment as we go.
         results = {}
@@ -1141,10 +1295,10 @@ class ClassifierTester:
         while cur_batch_size < max_batch_size:
             if split_subject:
                 result = self.__split_subject_train_test_classifiers(batch_size=batch_size,
-                                                                           cross_val_times=cross_val_times,
-                                                                           test_split=test_split)
+                                                                     cross_val_times=n_times,
+                                                                     test_split=test_split)
             else:
-                result = self.__train_test_classifiers(batch_size=batch_size, cross_val_times=cross_val_times)
+                result = self.__train_test_classifiers(batch_size=batch_size, cross_val_times=n_times)
             results[cur_batch_size] = result
             cur_batch_size = cur_batch_size + incr_value
 
@@ -1168,8 +1322,9 @@ class ClassifierTester:
                     classifier.fit(data, labels)
         if self.nn_test:
             #Reshape the data, split into train/validation sets and one-hot encode the labels.
-            data = gen_tools.reshape_3to4(data)
-            T_data, t_labels, V_data, v_labels = train_test_split(data, labels, test_size=0.2, shuffle=True)
+            newdata = gen_tools.reshape_3to4(data)
+            newdata = newdata * 1000 #This scaling is apparently needed according to EEGNet source.
+            T_data, V_data, t_labels, v_labels = train_test_split(newdata, labels, test_size=0.20, shuffle=True)
             t_labels = to_categorical(t_labels, 2)
             v_labels = to_categorical(v_labels, 2)
 
@@ -1179,11 +1334,11 @@ class ClassifierTester:
                     if self.callbacks:
                         network[0].fit(T_data, t_labels, batch_size=network[1]['batch_size'],
                                    epochs=network[1]['epochs'], callbacks=network[1]['callbacks'],
-                                       validation_data=(V_data, v_labels), class_weights = {0:1, 1:1})
+                                       validation_data=(V_data, v_labels), class_weight={0:1, 1:1})
                     else:
                         network[0].fit(T_data, t_labels, batch_size=network[1]['batch_size'],
                                        epochs=network[1]['epochs'], validation_data=(V_data, v_labels),
-                                       class_weights = {0:1, 1:1})
+                                       class_weight={0:1, 1:1})
         return
 
     def __test(self, data, labels):
@@ -1216,8 +1371,30 @@ class ClassifierTester:
 
         #Perform single trial test for neural network models.
         if self.nn_test:
-            # Not Implemented
-            not_imp = None
+            #Got to reshape for our neural network approach.
+            newdata = gen_tools.reshape_3to4(data)
+            newdata = newdata * 1000  # This scaling is apparently needed according to EEGNet source.
+            newlabels = to_categorical(labels, 2)
+
+            for name, classifier in self.nn_dict.items():
+                if self.nn_select is None or name in self.nn_select:  # Thank the lord for short-circuit evaluation...
+                    # Make the predictions.
+                    preds = classifier.predict(newdata)
+                    results[name] = {}
+
+                    prefix = 'test_'
+                    # Evaluate based on metrics.
+                    for metric in self.result_metrics.keys():
+                        if metric == 'Accuracy':
+                            results[name][prefix + metric] = accuracy_score(newlabels, preds)
+                        elif metric == 'Recall':
+                            results[name][prefix + metric] = recall_score(newlabels, preds)
+                        elif metric == 'Precision':
+                            results[name][prefix + metric] = precision_score(newlabels, preds)
+                        elif metric == 'F1_Score':
+                            results[name][prefix + metric] = f1_score(newlabels, preds)
+                        elif metric == 'ROC_AUC':
+                            results[name][prefix + metric] = roc_auc_score(newlabels, preds)
 
         return results
 
@@ -1271,59 +1448,58 @@ class ClassifierTester:
         subjects = list(self.sub_dict.keys())
         random.shuffle(subjects)
         subjects = subjects[:batch_size]
+        subject_set = set(subjects)
+
+        # Get the nearest whole number for the train test split.
+        # i.e. if there are 10 subjects, 0.2 train_test_split, then we get 2 subjects for testing.
+        test_count = round(len(subjects) * test_split)
 
         results = []
         cur_index = 0
+        tested_set = set([])
         for x in range(0, cross_val_times):
-            # Get the nearest whole number for the train test split.
-            # i.e. if there are 10 subjects, 0.2 train_test_split, then we get 2 subjects for testing.
-            test_count = round(len(subjects) * test_split)
-            test_indices = []
-            for y in range(0, test_count):
-                if cur_index < len(subjects):
-                    test_indices.append(subjects[cur_index])
-                    cur_index = cur_index + 1
-                else:
-                    test_indices.append(subjects[0])
-                    cur_index = 1
+            #We find our test and train sets by some basic set operations.
+            test_set = set(random.sample((subject_set - tested_set), k=test_count))
+            train_set = subject_set - test_set
 
-            #Grab our test data by using the test indices.
-            cur_sub = test_indices[0]
+            # Now, if our tested set has grown too large for the next loop, we reset it, otherwise
+            # we simply combine it with our current test set.
+            if len(subject_set - (tested_set.union(test_set))) < test_count:
+                tested_set = set([])
+            else:
+                tested_set = tested_set.union(test_set)
+
+            #Grab our test data by using the test set
+            cur_sub = test_set.pop()
             data_test = self.sub_dict[cur_sub]['data']
             labels_test = self.sub_dict[cur_sub]['labels']
-            for z in test_indices[1:]:
+            for sub in test_set:
                 data_test = np.concatenate(
-                    (data_test, self.sub_dict[z]['data']),
+                    (data_test, self.sub_dict[sub]['data']),
                     axis=0)
                 labels_test = np.concatenate(
-                    (labels_test, self.sub_dict[z]['labels']),
+                    (labels_test, self.sub_dict[sub]['labels']),
                     axis=0)
-
-            #Create a list of training indices that is the difference between subjects and test indices
-            train_indices = []
-            for index in subjects:
-                if index not in test_indices:
-                    train_indices.append(index)
 
             # Fill training data with the rest
-            cur_sub = train_indices.pop()
+            cur_sub = train_set.pop()
             data_train = self.sub_dict[cur_sub]['data']
             labels_train = self.sub_dict[cur_sub]['labels']
-            while len(subjects) > 0 and len(train_indices) > 0:
-                cur_sub = train_indices.pop()
+            for sub in train_set:
                 data_train = np.concatenate(
-                    (data_train, self.sub_dict[cur_sub]['data']),
+                    (data_train, self.sub_dict[sub]['data']),
                     axis=0)
                 labels_train = np.concatenate(
-                    (labels_train, self.sub_dict[cur_sub]['labels']),
+                    (labels_train, self.sub_dict[sub]['labels']),
                     axis=0)
 
-            # Randomise them both.
+            # Randomise them both. Don't want them ordered.
             data_test, labels_test = shuffle(data_test, labels_test)
             data_train, labels_train = shuffle(data_train, labels_train)
 
             self.__train(data_train, labels_train)
             results.append(self.__test(data_test, labels_test))
+
         #Now, we need to change results from the form of a list(dict(dict()))
         #to the form of dict(dict()) to match the cross validate function and make it
         #easier to read.
@@ -1338,22 +1514,3 @@ class ClassifierTester:
                 final_results[name][key] = final_results[name][key] / count
                 count = 1
         return final_results
-
-
-
-# print(mne.get_config('MNE_LOGGING_LEVEL'))
-# mne.set_config('MNE_LOGGING_LEVEL', 'warning')
-# print(mne.get_config('MNE_LOGGING_LEVEL'))
-# test = ClassifierTester(subj_range=[1, 2], data_source='physionet', stim_select='hf', stim_type='imaginary',
-#                         p_select='genetic', p_select_frac=1, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
-#                         p_n_jobs=2, tmin=-1, tmax=4)
-# test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=5)
-# test.run_batch_test(batch_size=10, n_times=5, sk_test=True, nn_test=False)
-#
-# for x in range(1, 110):
-#     fname = 'sub{sub}_hf_im_64ch'.format(sub=x)
-#     fpath = 'CLassifierTesterResults/Individual/HF-IM'
-#     test = ClassifierTester(subj_range=[x, x+1], data_source='physionet', stim_select='hf', stim_type='imaginary',
-#                             p_select='genetic', p_select_frac=0.1, result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'],
-#                             p_n_jobs=4, p_skip_mdm=True, tmin=-1, tmax=4, f_name=fname, f_path=fpath)
-#     test.run_individual_test(sk_test=True, nn_test=False, cross_val_times=5)

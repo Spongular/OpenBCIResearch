@@ -18,16 +18,20 @@ from sklearn import svm
 from sklearn.model_selection import ShuffleSplit, cross_val_score, StratifiedKFold, GridSearchCV
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from pyriemann.estimation import Covariances
+from pyriemann.spatialfilters import CSP as CovCSP
 from sklearn_genetic import GASearchCV
 from sklearn_genetic.space import Categorical, Integer, Continuous
 from sklearn_genetic.callbacks import ConsecutiveStopping, DeltaThreshold
 from time import time
+import pyriemann
 
 from pyriemann.tangentspace import TangentSpace
 from pyriemann.estimation import Covariances
 
 mne.set_log_level('WARNING')
-tmin, tmax = 0., 4. #This determines the boundaries for the epochs.
+tmin, tmax = -1., 4. #This determines the boundaries for the epochs.
 #event_dict = dict(hands=2, feet=3) #Define our events.
 
 def csp_lda(max_csp_components=10):
@@ -54,9 +58,9 @@ def csp_lda(max_csp_components=10):
 files = []
 for a in range(1, 2):
     num = "{0:03}".format(a)
-    files += ["EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R04.edf",
-              "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R08.edf",
-              "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R12.edf"]
+    files += ["EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R05.edf",
+              "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R09.edf",
+              "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R13.edf"]
 
 #load the files.
 raw = concatenate_raws([read_raw_edf(f, preload=True) for f in files])
@@ -100,48 +104,40 @@ cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=rand)
 #cv_split = cv.split(epochs_data_train)
 print(rand)
 #Assemble classifiers
-# csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
-# var = VarianceThreshold(threshold=(.9 * (1 - .9)))
-# svm = svm.SVC(gamma='auto', C=1)
-params_dict ={'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'mcd', 'corr'),
-              'TS__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
-             }
-#Bads: ('mcd', 'riemann'), ('mcd', 'logeuclid'), ('mcd', 'euclid'), ('mcd', 'logdet'), ('mcd', 'wasserstein')
-#Goods: ('cov', 'riemann'), ('cov', 'logeuclid'), ('cov', 'euclid'), ('cov', 'logdet'), ('cov', 'wasserstein'),
-# ('scm', 'riemann'), ('scm', 'logeuclid'), ('scm', 'euclid'), ('scm', 'logdet'), ('scm', 'wasserstein'),
-# ('lwf', 'riemann'), ('lwf', 'logeuclid'), ('lwf', 'euclid'), ('lwf', 'logdet'), ('lwf', 'wasserstein'),
-# ('oas', 'riemann'), ('oas', 'logeuclid'), ('oas', 'euclid'), ('oas', 'logdet'), ('oas', 'wasserstein')
-param_combs = [('corr', 'riemann'), ('corr', 'logeuclid'), ('corr', 'euclid'), ('corr', 'logdet'), ('corr', 'wasserstein'),]
-results = {}
-for params in param_combs:
-    cov = Covariances(estimator=params[0])
-    ts = TangentSpace(metric=params[1])
-    lr = LogisticRegression(max_iter=1000)
-    print("est: {e}, metric: {m}".format(e=params[0], m=params[1]))
-    clf2 = Pipeline([('COV', cov), ('TS', ts), ('LR', lr)])
-    t0 = time()
-    scores = cross_val_score(clf2, epochs_data, labels, cv=cv, n_jobs=1)
-    class_balance = np.mean(labels == labels[0])
-    class_balance = max(class_balance, 1. - class_balance)
-    t1 = time() - t0
-    print("TS-LR completed in %0.3fs" % (t1))
-    print("TS-LR Classification accuracy: %f / Chance level: %f" % (np.mean(scores),
-                                                               class_balance))
-    name = params[0] + '-' + params[1]
-    results[name] = t1
-    print("\n\n")
+cov1 = Covariances()
+csp1 = CovCSP(nfilter=4, log=True)
+var1 = VarianceThreshold(threshold=(.9 * (1 - .9)))
+lda1 = LinearDiscriminantAnalysis()
 
-for key, item in results.items():
-    print("{k} time elapsed: {i}".format(k=key, i=item))
+cov2 = Covariances()
+csp2 = CovCSP(nfilter=4, log=True)
+lda2 = LinearDiscriminantAnalysis()
+
+
 #Use scikit-learn pipeline with cross_val_score function
-#clf = Pipeline([('CSP', csp), ('VAR', var), ('LDA', lda)])
-#clf = Pipeline([('CSP', csp), ('LDA', lda)])
-# scores = cross_val_score(clf2, epochs_data, labels, cv=cv, n_jobs=1)
-# class_balance = np.mean(labels == labels[0])
-# class_balance = max(class_balance, 1. - class_balance)
-# print("SVM Classification accuracy: %f / Chance level: %f" % (np.mean(scores),
-#                                                            class_balance))
-#
+clf = Pipeline([('COV', cov1), ('CSP', csp1), ('VAR', var1), ('LDA', lda1)])
+clf2 = Pipeline([('COV', cov2), ('CSP', csp2), ('LDA', lda2)])
+
+
+cov = Covariances()
+csp = CovCSP(nfilter=4, log=True)
+var = VarianceThreshold(threshold=(.9 * (1 - .9)))
+lda = LinearDiscriminantAnalysis()
+
+
+scores = cross_val_score(clf2, epochs_data, labels, cv=cv, n_jobs=1)
+class_balance = np.mean(labels == labels[0])
+class_balance = max(class_balance, 1. - class_balance)
+print("Non-Scaled SVM Classification accuracy: %f / Chance level: %f / Standard Deviation: %f" % (np.mean(scores),
+                                                                   class_balance, np.std(scores)))
+
+scores = cross_val_score(clf, epochs_data, labels, cv=cv, n_jobs=1)
+class_balance = np.mean(labels == labels[0])
+class_balance = max(class_balance, 1. - class_balance)
+print("Scaled SVM Classification accuracy: %f / Chance level: %f / Standard Deviation: %f" % (np.mean(scores),
+                                                                   class_balance, np.std(scores)))
+
+
 # #This is necessary for multithreading in windows.
 # bools = list([True, False])
 #
