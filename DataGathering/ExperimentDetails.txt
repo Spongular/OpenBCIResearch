@@ -25,6 +25,8 @@ Subjects:
         -Mentioned that he felt like he was anticipating the stimulus.
         -Did not report strong eye-strain.
         -Had consumed caffeine prior to recording.
+    -Subject 4: Male, 42 years old, left handed, prior BCI experience.
+        -Had consumed caffeine prior to recording.
 
 
 Subject Instructions:
