@@ -1170,10 +1170,12 @@ class ClassifierTester:
         self.nn_select = nn_select
 
         # See if our classifiers are already generated, and if not, do so.
-        if not self.sk_class_loaded and sk_test:
-            self.initialise_sklearn_classifiers()
-        if not self.nn_class_loaded and nn_test:
-            self.initialise_neural_networks()
+        if sk_test:
+            if not self.sk_class_loaded:
+                self.initialise_sklearn_classifiers()
+        if nn_test:
+            if not self.nn_class_loaded and not self.filter_bank:
+                self.initialise_neural_networks()
 
         # Write our initial text into results.
         self.__print("--INDIVIDUAL TEST--\n")
@@ -1207,11 +1209,13 @@ class ClassifierTester:
         self.nn_test = nn_test
         self.nn_select = nn_select
 
-        #See if our classifiers are already generated, and if not, do so.
-        if not self.sk_class_loaded:
-            self.initialise_sklearn_classifiers()
-        if not self.nn_class_loaded:
-            self.initialise_neural_networks()
+        # See if our classifiers are already generated, and if not, do so.
+        if sk_test:
+            if not self.sk_class_loaded:
+                self.initialise_sklearn_classifiers()
+        if nn_test:
+            if not self.nn_class_loaded and not self.filter_bank:
+                self.initialise_neural_networks()
 
         if batch_size > len(self.sub_dict.keys()):
             batch_size = len(self.sub_dict.keys())
@@ -1272,10 +1276,12 @@ class ClassifierTester:
         self.nn_select = nn_select
 
         # See if our classifiers are already generated, and if not, do so.
-        if not self.sk_class_loaded:
-            self.initialise_sklearn_classifiers()
-        if not self.nn_class_loaded:
-            self.initialise_neural_networks()
+        if sk_test:
+            if not self.sk_class_loaded:
+                self.initialise_sklearn_classifiers()
+        if nn_test:
+            if not self.nn_class_loaded and not self.filter_bank:
+                self.initialise_neural_networks()
 
         # Write our initial text into results.
         self.__print("--INCREMENTAL BATCH TEST--\n")

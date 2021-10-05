@@ -1,0 +1,175 @@
+
+Performing parameter search on pipeline: FBCSP-SVM
+
+Performing GASearchCV to find optimal parameter set...
+GASearchCV completed in 17880.260s
+Displaying Results...
+Best score: 0.559
+Best parameters set:
+	SVC__C: 1000.0
+	SVC__kernel: 'poly'
+
+All Parameter Searches Completed.
+Time Elapsed: 17880.270713806152
+
+Results for ClassifierTester Class on dataset 'physionet'
+Date/Time: 05-10-2021_02-55-34
+Settings:
+    Type = movement - lr
+    Subject Range = [1, 110]
+    Result Metrics = ['acc', 'f1', 'rec', 'prec', 'roc']
+    Gridsearch = genetic    Filter Bounds = (8.0, 35.0)
+    tmin = -1, tmax = 4
+    Channels = All
+    Random State = 335010
+
+Warning: parameter 'max_batch_size' has been decreased to the total subject count 102
+--INCREMENTAL BATCH TEST--
+Parameters:
+    batch_size = 10
+    incr_value = 10
+    max_batch_size = 102
+    sk_test = True, sk_select = None
+    nn_test = False, nn_select = None
+    train_test_split = <function train_test_split at 0x00000237482CA708>, split_subjects = True
+    cross_val_times = 5
+--Batch Size: 10: 
+Classifier: FBCSP-SVM
+test_Accuracy = 0.5045977011494254
+test_Accuracy_std = 0.0
+test_Recall = 0.5714253478571616
+test_Recall_std = 0.0
+test_Precision = 0.47173113506658215
+test_Precision_std = 0.0
+test_F1_Score = 0.45945478800417555
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5046732095170234
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 20: 
+Classifier: FBCSP-SVM
+test_Accuracy = 0.5267432950191571
+test_Accuracy_std = 0.0
+test_Recall = 0.615368548988367
+test_Recall_std = 0.0
+test_Precision = 0.5116393262482571
+test_Precision_std = 0.0
+test_F1_Score = 0.5470565985700279
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.528310652075039
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 30: 
+Classifier: FBCSP-SVM
+test_Accuracy = 0.5303448275862068
+test_Accuracy_std = 0.0
+test_Recall = 0.5515840916750927
+test_Recall_std = 0.0
+test_Precision = 0.5449421070732546
+test_Precision_std = 0.0
+test_F1_Score = 0.5155510967269021
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5371065253758928
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 40: 
+Classifier: FBCSP-SVM
+test_Accuracy = 0.4762452107279693
+test_Accuracy_std = 0.0
+test_Recall = 0.4050663683497193
+test_Recall_std = 0.0
+test_Precision = 0.474094191522763
+test_Precision_std = 0.0
+test_F1_Score = 0.42751430834824256
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.47883317068019
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 50: 
+Classifier: FBCSP-SVM
+test_Accuracy = 0.5111111111111111
+test_Accuracy_std = 0.0
+test_Recall = 0.47216653024539773
+test_Recall_std = 0.0
+test_Precision = 0.5128277046348392
+test_Precision_std = 0.0
+test_F1_Score = 0.4512331552387995
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5101266242458452
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 60: 
+Classifier: FBCSP-SVM
+test_Accuracy = 0.48360153256704985
+test_Accuracy_std = 0.0
+test_Recall = 0.4514195107218363
+test_Recall_std = 0.0
+test_Precision = 0.4558225108225108
+test_Precision_std = 0.0
+test_F1_Score = 0.4254554550700595
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.4844910465335136
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 70: 
+Classifier: FBCSP-SVM
+test_Accuracy = 0.5225287356321838
+test_Accuracy_std = 0.0
+test_Recall = 0.3419708715057552
+test_Recall_std = 0.0
+test_Precision = 0.5839139784946237
+test_Precision_std = 0.0
+test_F1_Score = 0.3958513931888545
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5223713883016209
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 80: 
+Classifier: FBCSP-SVM
+test_Accuracy = 0.5418390804597701
+test_Accuracy_std = 0.0
+test_Recall = 0.4667243867243867
+test_Recall_std = 0.0
+test_Precision = 0.5465506421147694
+test_Precision_std = 0.0
+test_F1_Score = 0.4535997669368081
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5411399711399711
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 90: 
+Classifier: FBCSP-SVM
+test_Accuracy = 0.5102681992337165
+test_Accuracy_std = 0.0
+test_Recall = 0.2371552736669016
+test_Recall_std = 0.0
+test_Precision = 0.5024975024975025
+test_Precision_std = 0.0
+test_F1_Score = 0.30859035701140963
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.507868370254619
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 100: 
+Classifier: FBCSP-SVM
+test_Accuracy = 0.5355555555555556
+test_Accuracy_std = 0.0
+test_Recall = 0.4060770495654217
+test_Recall_std = 0.0
+test_Precision = 0.5486724243427321
+test_Precision_std = 0.0
+test_F1_Score = 0.4422638864118265
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5350582595961552
+test_ROC_AUC_std = 0.0
+
+
