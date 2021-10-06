@@ -242,22 +242,22 @@ class ClassifierTester:
             #Grab the file names and filter to match what is needed.
             rootpath = 'E:\\PycharmProjects\\OpenBCIResearch\\DataGathering\\LiveRecordings\\MotorResponses\\Movement\\'
             file_paths = listdir(rootpath)
-            filt_files = []
+            filt_files = {}
             if live_layout == 'headband':
                 for sub in range(r1, r2):
-                    filt_files.append(fnmatch.filter(file_paths, 'subject{sub}-??_??_????-mm-{stim}*'.format(sub=sub,
-                                                                                                 stim=stim_select)))
+                    filt_files[sub] = fnmatch.filter(file_paths, 'subject{sub}-??_??_????-mm-{stim}*'.format(sub=sub,
+                                                                                                 stim=stim_select))
             elif live_layout == 'm_cortex':
                 for sub in range(r1, r2):
-                    filt_files.append(fnmatch.filter(file_paths, 'subject{sub}-??_??_????-m_cortex_electrode_placement-mm-{stim}*'.format(sub=sub,
-                                                                                                 stim=stim_select)))
+                    filt_files[sub] = fnmatch.filter(file_paths, 'subject{sub}-??_??_????-m_cortex_electrode_placement-mm-{stim}*'.format(sub=sub,
+                                                                                                 stim=stim_select))
             else:
                 raise Exception("Error: 'live_layout' must be either 'headband' or 'm_cortex'")
 
             #Format the file paths and load them through LiveBCI
-            for sub in filt_files:
+            for sub, files in filt_files.items():
                 file_paths = []
-                for file_name in sub:
+                for file_name in files:
                     file_paths.append(rootpath + file_name)
                 dloader = LiveBCI.MotorImageryStimulator(stim_time=4, wait_time=4, stim_count=5, stim_type='lr',
                                                          board=None)
@@ -334,6 +334,7 @@ class ClassifierTester:
         self.p_select = p_select
         self.p_n_jobs = p_n_jobs
         #self.p_skip_mdm = p_skip_mdm
+
         if self.p_select is not None:
             if self.p_select == 'gridsearch':
                 print("Performing Gridsearch on compatible pipelines to find optimal parameters...")
@@ -394,7 +395,7 @@ class ClassifierTester:
         if self.data_source == 'physionet' and isinstance(raw_source, mne.io.edf.edf.RawEDF):
             return self.__process_physionet(raw_source)
         elif (self.data_source == 'live-movement' or self.data_source == 'live-imagined') \
-                and isinstance(raw_source, LiveBCI):
+                and isinstance(raw_source, LiveBCI.MotorImageryStimulator):
             return self.__process_live(raw_source)
         else:
             raise Exception("Error: Parameter 'data_source' must be either 'physionet', "

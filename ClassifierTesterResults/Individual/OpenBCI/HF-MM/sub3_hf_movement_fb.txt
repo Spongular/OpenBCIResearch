@@ -1,0 +1,56 @@
+
+Performing parameter search on pipeline: FBCSP-SVM
+
+Performing GASearchCV to find optimal parameter set...
+GASearchCV completed in 56.859s
+Displaying Results...
+Best score: 0.969
+Best parameters set:
+	SVC__C: 1.0
+	SVC__kernel: 'poly'
+
+All Parameter Searches Completed.
+Time Elapsed: 56.860023498535156
+
+Results for ClassifierTester Class on dataset 'live-movement'
+Date/Time: 06-10-2021_11-18-36
+Settings:
+    Type = movement - hf
+    Subject Range = [3, 4]
+    Result Metrics = ['acc', 'f1', 'rec', 'prec', 'roc']
+    Gridsearch = genetic    Filter Bounds = (8.0, 35.0)
+    tmin = -1, tmax = 4
+    Channels = All
+    Random State = 927114
+--INDIVIDUAL TEST--
+Parameters:
+    sk_test = True, sk_select = None
+    nn_test = False, nn_select = None
+    cross_val_times = 5
+--Subj No. 3: 
+Classifier: FBCSP-SVM
+fit_time = 0.12446599006652832
+fit_time_std = 0.0007459199711196096
+score_time = 0.026130199432373047
+score_time_std = 0.0007462255486036819
+test_Accuracy = 0.9689473684210526
+test_Accuracy_std = 0.025372570090934656
+train_Accuracy = 0.9921736158578263
+train_Accuracy_std = 0.0063905205242010205
+test_Recall = 0.9777777777777779
+test_Recall_std = 0.04444444444444447
+train_Recall = 0.9894736842105264
+train_Recall_std = 0.012892051277806186
+test_Precision = 0.9636363636363636
+test_Precision_std = 0.04453617714151235
+train_Precision = 0.9948717948717949
+train_Precision_std = 0.010256410256410265
+test_F1_Score = 0.9691876750700279
+test_F1_Score_std = 0.025488656954795144
+train_F1_Score = 0.9920692640692639
+train_F1_Score_std = 0.006476653454756909
+test_ROC_AUC = 0.9935555555555556
+test_ROC_AUC_std = 0.005277485372016859
+train_ROC_AUC = 0.9997265430783436
+train_ROC_AUC_std = 0.0003349620320349903
+
