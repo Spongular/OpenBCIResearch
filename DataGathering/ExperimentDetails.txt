@@ -27,6 +27,9 @@ Subjects:
         -Had consumed caffeine prior to recording.
     -Subject 4: Male, 42 years old, left handed, prior BCI experience.
         -Had consumed caffeine prior to recording.
+    -Subject 5: Male, 56 years old, right handed, no prior BCI experience.
+        -Had consumed caffeine prior to recording.
+        -Reported no issues with eye fatigue.
 
 
 Subject Instructions:
