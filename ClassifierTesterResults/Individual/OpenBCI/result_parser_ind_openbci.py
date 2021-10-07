@@ -10,7 +10,7 @@ import openpyxl
 #These are used for looping.
 stim_combos = [('hf', 'movement', 'HF-MM'), ('lr', 'movement', 'LR-MM')]
 ch_layouts = ['motor_cortex']
-subject_range = range(1, 5)
+subject_range = range(1, 6)
 columns = ['subject_no', 'layout',
            'cspknn_accuracy', 'cspknn_recall', 'cspknn_precision', 'cspknn_f1', 'cspknn_roc-auc',
            'cspsvm_accuracy', 'cspsvm_recall', 'cspsvm_precision', 'cspsvm_f1', 'cspsvm_roc-auc',
