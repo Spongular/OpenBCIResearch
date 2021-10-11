@@ -6,7 +6,7 @@ combinations = [('hf', 'movement', 'HF-MM'), ('lr', 'movement', 'LR-MM')]
 
 #Random state must be equal to compare effectively.
 rand = random.randint(1, 999999)
-r = range(5, 6)
+r = range(1, 6)
 
 for combo in combinations:
     print("\nIterating for Combination: {combo}\n\n".format(combo=combo[2]))

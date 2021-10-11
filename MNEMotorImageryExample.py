@@ -18,6 +18,7 @@ from sklearn import svm
 from sklearn.model_selection import ShuffleSplit, cross_val_score, StratifiedKFold, GridSearchCV
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.pipeline import Pipeline
+from sklearn.ensemble import AdaBoostClassifier
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from pyriemann.estimation import Covariances
 from pyriemann.spatialfilters import CSP as CovCSP
@@ -109,32 +110,27 @@ csp1 = CovCSP(nfilter=4, log=True)
 var1 = VarianceThreshold(threshold=(.9 * (1 - .9)))
 lda1 = LinearDiscriminantAnalysis()
 
-cov2 = Covariances()
-csp2 = CovCSP(nfilter=4, log=True)
-lda2 = LinearDiscriminantAnalysis()
+csp = CSP(n_components=4, log=True)
+var = VarianceThreshold(threshold=(.9 * (1 - .9)))
+ada = AdaBoostClassifier(n_estimators=100)
+
 
 
 #Use scikit-learn pipeline with cross_val_score function
 clf = Pipeline([('COV', cov1), ('CSP', csp1), ('VAR', var1), ('LDA', lda1)])
-clf2 = Pipeline([('COV', cov2), ('CSP', csp2), ('LDA', lda2)])
-
-
-cov = Covariances()
-csp = CovCSP(nfilter=4, log=True)
-var = VarianceThreshold(threshold=(.9 * (1 - .9)))
-lda = LinearDiscriminantAnalysis()
+clf2 = Pipeline([('CSP', csp), ('VAR', var), ('ADA', ada)])
 
 
 scores = cross_val_score(clf2, epochs_data, labels, cv=cv, n_jobs=1)
 class_balance = np.mean(labels == labels[0])
 class_balance = max(class_balance, 1. - class_balance)
-print("Non-Scaled SVM Classification accuracy: %f / Chance level: %f / Standard Deviation: %f" % (np.mean(scores),
+print("AdaBoost Classification accuracy: %f / Chance level: %f / Standard Deviation: %f" % (np.mean(scores),
                                                                    class_balance, np.std(scores)))
 
 scores = cross_val_score(clf, epochs_data, labels, cv=cv, n_jobs=1)
 class_balance = np.mean(labels == labels[0])
 class_balance = max(class_balance, 1. - class_balance)
-print("Scaled SVM Classification accuracy: %f / Chance level: %f / Standard Deviation: %f" % (np.mean(scores),
+print("Cov-CSP Classification accuracy: %f / Chance level: %f / Standard Deviation: %f" % (np.mean(scores),
                                                                    class_balance, np.std(scores)))
 
 

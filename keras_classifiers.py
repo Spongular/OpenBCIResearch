@@ -212,6 +212,7 @@ def perform_crossval(X, Y, model, n_splits, epochs, batch_size, n_classes=2, opt
     print(loss)
     return
 
+
 #NOT MINE, FROM https://github.com/vlawhern/arl-eegmodels/blob/master/EEGModels.py
 #Altered it to accept input [Chans, Samples, ThirdAxis] rather than [Chans, Samples, 1]
 def EEGNet(nb_classes, Chans=64, Samples=128, ThirdAxis=1,
