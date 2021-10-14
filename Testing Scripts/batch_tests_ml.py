@@ -2,9 +2,8 @@ from ClassifierTester import ClassifierTester
 import random
 
 #The sets of stimuli/operations to test.
-# combinations = [('hf', 'imaginary'), ('hf', 'movement'),
-#                 ('lr', 'imaginary'), ('lr', 'movement')]
-combinations = [('hf', 'imaginary')]
+combinations = [('hf', 'imaginary'), ('hf', 'movement'),
+                ('lr', 'imaginary'), ('lr', 'movement')]
 rand = random.randint(1, 999999)
 
 #For Machine Learning---------------------------------------------------------------------------------------------------
@@ -16,12 +15,12 @@ for combo in combinations:
     fpath = 'E:/PycharmProjects/OpenBCIResearch/CLassifierTesterResults/Batch/ML'
 
     # Form our testing class and run it.
-    # test = ClassifierTester(subj_range=[1, 110], data_source='physionet', stim_select=combo[0], stim_type=combo[1],
-    #                         result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'], tmin=-1, tmax=4,
-    #                         f_name=fname, f_path=fpath, random_state=rand, p_select='genetic', p_select_frac=0.15, p_n_jobs=-1)
-    # test.run_increment_batch_test(batch_size=10, incr_value=10, max_batch_size=109, n_times=5, sk_test=True,
-    #                               nn_test=False, split_subject=True)
-    # del test
+    test = ClassifierTester(subj_range=[1, 110], data_source='physionet', stim_select=combo[0], stim_type=combo[1],
+                            result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'], tmin=-1, tmax=4,
+                            f_name=fname, f_path=fpath, random_state=rand, p_select='genetic', p_select_frac=0.15, p_n_jobs=-1)
+    test.run_increment_batch_test(batch_size=10, incr_value=10, max_batch_size=109, n_times=5, sk_test=True,
+                                  nn_test=False, split_subject=True)
+    del test
 
     #Do the same for filter bank.
     fname = fname + '_fb'
@@ -40,13 +39,13 @@ for combo in combinations:
     fpath = 'E:/PycharmProjects/OpenBCIResearch/CLassifierTesterResults/Batch/ML'
 
     # Form our testing class and run it.
-    # test = ClassifierTester(subj_range=[1, 110], data_source='physionet', stim_select=combo[0], stim_type=combo[1],
-    #                         result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'], p_n_jobs=-1, tmin=-1, tmax=4,
-    #                         f_name=fname, f_path=fpath, random_state=rand, ch_list=['Fp1', 'Fp2', 'O1', 'O2'],
-    #                         p_select='genetic', p_select_frac=0.15)
-    # test.run_increment_batch_test(batch_size=10, incr_value=10, max_batch_size=109, n_times=5, sk_test=True,
-    #                               nn_test=False, split_subject=True)
-    # del test
+    test = ClassifierTester(subj_range=[1, 110], data_source='physionet', stim_select=combo[0], stim_type=combo[1],
+                            result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'], p_n_jobs=-1, tmin=-1, tmax=4,
+                            f_name=fname, f_path=fpath, random_state=rand, ch_list=['Fp1', 'Fp2', 'O1', 'O2'],
+                            p_select='genetic', p_select_frac=0.15)
+    test.run_increment_batch_test(batch_size=10, incr_value=10, max_batch_size=109, n_times=5, sk_test=True,
+                                  nn_test=False, split_subject=True)
+    del test
 
     #Do the same for filter bank.
     fname = fname + '_fb'
@@ -66,13 +65,13 @@ for combo in combinations:
     fpath = 'E:/PycharmProjects/OpenBCIResearch/CLassifierTesterResults/Batch/ML'
 
     # Form our testing class and run it.
-    # test = ClassifierTester(subj_range=[1, 110], data_source='physionet', stim_select=combo[0], stim_type=combo[1],
-    #                         result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'], p_n_jobs=-1, tmin=-1, tmax=4,
-    #                         f_name=fname, f_path=fpath, random_state=rand, ch_list=['C3', 'Cz', 'C4'],
-    #                         p_select='genetic', p_select_frac=0.15)
-    # test.run_increment_batch_test(batch_size=10, incr_value=10, max_batch_size=109, n_times=5, sk_test=True,
-    #                               nn_test=False, split_subject=True)
-    # del test
+    test = ClassifierTester(subj_range=[1, 110], data_source='physionet', stim_select=combo[0], stim_type=combo[1],
+                            result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'], p_n_jobs=-1, tmin=-1, tmax=4,
+                            f_name=fname, f_path=fpath, random_state=rand, ch_list=['C3', 'Cz', 'C4'],
+                            p_select='genetic', p_select_frac=0.15)
+    test.run_increment_batch_test(batch_size=10, incr_value=10, max_batch_size=109, n_times=5, sk_test=True,
+                                  nn_test=False, split_subject=True)
+    del test
 
     # Do the same for filter bank.
     fname = fname + '_fb'
