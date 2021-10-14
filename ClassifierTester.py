@@ -49,7 +49,8 @@ from pyriemann.spatialfilters import CSP as CovCSP
 from sklearn import svm
 from sklearn.feature_selection import VarianceThreshold, SelectKBest, mutual_info_classif
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import StratifiedKFold, train_test_split, GridSearchCV, cross_validate
+from sklearn.model_selection import StratifiedKFold, train_test_split, GridSearchCV, cross_validate,\
+    StratifiedShuffleSplit
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
@@ -343,10 +344,8 @@ class ClassifierTester:
             if p_select_frac > 1 or p_select_frac <= 0:
                 raise Exception("Error: 'p_select_frac' must be a value between 0 and 1, or None")
             if p_select_frac is None:
-                pool_size = len(self.sub_dict)
-            else:
-                pool_size = round(len(self.sub_dict) * p_select_frac)
-            self.__gridsearch_params(pool_size=pool_size, n_jobs=self.p_n_jobs)
+                p_select_frac = 1
+            self.__gridsearch_params(test_frac=p_select_frac, n_jobs=self.p_n_jobs)
         else:
             #Without a gridsearch, we just fill the class dictionary with the classifiers set to default.
             pipelines = self.__generate_pipelines()
@@ -437,22 +436,28 @@ class ClassifierTester:
         return data, labels
 
 
-    def __gridsearch_params(self, pool_size, n_jobs=2):
+    def __gridsearch_params(self, test_frac, n_jobs=2):
         # Generate the dictionary.
         self.sk_dict = {}
 
         # Form the data randomly.
         sub_pool = list(self.sub_dict.keys())
-        random.shuffle(sub_pool)
         val = sub_pool.pop()
         data = self.sub_dict[val]['data']
         labels = self.sub_dict[val]['labels']
-        for val in range(0, pool_size - 1):
-            val = sub_pool.pop()
-            data = np.concatenate((data, self.sub_dict[val]['data']),
+        for sub in sub_pool:
+            data = np.concatenate((data, self.sub_dict[sub]['data']),
                                   axis=0)
-            labels = np.concatenate((labels, self.sub_dict[val]['labels']),
+            labels = np.concatenate((labels, self.sub_dict[sub]['labels']),
                                     axis=0)
+
+        #To get a representative split of the data, let's use shufflesplit and only take the test split.
+        ss = StratifiedShuffleSplit(n_splits=1, test_size=test_frac, random_state=self.random_state)
+        x_test, y_test = None, None
+        for train_index, test_index in ss.split(data, labels):
+            x_test = data[test_index]
+            y_test = labels[test_index]
+        del data, labels
 
         # Generate the classifiers to test.
         pipelines = self.__generate_pipelines()
@@ -465,9 +470,9 @@ class ClassifierTester:
             #     continue
             self.__print("\nPerforming parameter search on pipeline: {pipe}\n".format(pipe=pipe[0]))
             if self.p_select == 'gridsearch':
-                grid = self.__perform_gridsearch(pipe[1], pipe[2], data, labels, n_jobs=n_jobs, cross_val=5)
+                grid = self.__perform_gridsearch(pipe[1], pipe[2], x_test, y_test, n_jobs=n_jobs, cross_val=3)
             elif self.p_select == 'genetic':
-                grid = self.__perform_genetic(pipe[1], pipe[2], data, labels, n_jobs=n_jobs, cross_val=5)
+                grid = self.__perform_genetic(pipe[1], pipe[2], x_test, y_test, n_jobs=n_jobs, cross_val=3)
             else:
                 raise Exception("Error: parameter 'p_select' must be either None, 'gridsearch' or 'genetic'")
 
@@ -846,11 +851,11 @@ class ClassifierTester:
         if params is None:
             cov = Covariances()
             ts = TangentSpace()
-            lr = LogisticRegression(max_iter=1000)
+            lr = LogisticRegression(max_iter=100000)
         elif type(params) is dict:
             cov = Covariances(estimator=params['COV__estimator'])
             ts = TangentSpace(metric=params['TS__metric'])
-            lr = LogisticRegression(max_iter=1000)
+            lr = LogisticRegression(max_iter=100000, C=params['LR__C'])
         else:
             raise Exception("Error: Parameter 'params' must be of type 'dict'.")
         clf = Pipeline([('COV', cov), ('TS', ts), ('LR', lr)])
@@ -912,10 +917,11 @@ class ClassifierTester:
         if params is None:
             cov = Covariances()
             csp = CovCSP(nfilter=4, log=True)
-            lr = LogisticRegression(max_iter=1000)
+            lr = LogisticRegression(max_iter=100000)
         elif type(params) is dict:
             cov = Covariances(estimator=params['COV__estimator'])
             csp = CovCSP(nfilter=params['CSP__nfilter'], log=True, metric=params['CSP__metric'])
+            lr = LogisticRegression(max_iter=100000, C=params['LR__C'])
         else:
             raise Exception("Error: Parameter 'params' must be of type 'dict'.")
         clf = Pipeline([('COV', cov), ('CSP', csp), ('LR', lr)])
@@ -947,7 +953,7 @@ class ClassifierTester:
         if params is None:
             fb = FilterBank(make_pipeline(Covariances(estimator="oas"), CovCSP(nfilter=4)))
             kb = SelectKBest(score_func=mutual_info_classif, k=10)
-            svc = svm.SVC(kernel="linear")
+            svc = svm.SVC(kernel="rbf")
         elif type(params) is dict:
             fb = FilterBank(make_pipeline(Covariances(estimator="oas"), CovCSP(nfilter=4)))
             kb = SelectKBest(score_func=mutual_info_classif, k=10)

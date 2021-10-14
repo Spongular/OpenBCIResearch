@@ -35,29 +35,14 @@ mne.set_log_level('WARNING')
 tmin, tmax = -1., 4. #This determines the boundaries for the epochs.
 #event_dict = dict(hands=2, feet=3) #Define our events.
 
-def csp_lda(max_csp_components=10):
-    print("Generating PCA-LDA classifier pipeline...")
-    # Assemble classifiers
-    lda = LinearDiscriminantAnalysis()
-    var = VarianceThreshold(threshold=(.9 * (1 - .9)))
-    csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
-    # create the pipeline
-    clf = Pipeline([('CSP', csp), ('VAR', var), ('LDA', lda)])
-    # Form the parameter dictionary
-    parameters = {
-        'LDA__solver': ('svd', 'lsqr', 'eigen'),
-        'CSP__n_components': range(2, max_csp_components + 1),
-        'CSP__cov_est': ('concat', 'epoch'),
-        'CSP__norm_trace': (True, False),
-        'VAR__threshold': np.linspace(start=0, stop=0.1, num=15)
-    }
-    return "CSP-LDA", clf, parameters
 
-
+subjects = set(range(1, 110))
+exclusions = set([38, 80, 88, 89, 92, 100, 104])
+subjects = subjects - exclusions
 
 #Select the hands & feet tests.
 files = []
-for a in range(1, 2):
+for a in subjects:
     num = "{0:03}".format(a)
     files += ["EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R05.edf",
               "EEGRecordings\\PhysioNetMMDB\\eegmmidb-1.0.0.physionet.org\\S" + num + "\\S" + num + "R09.edf",
@@ -79,7 +64,7 @@ raw.rename_channels(lambda x: x.strip('.'))
 #Apply a band-pass filter.
 #In this instance, the lower bound is 7hz, and upper is 30hz.
 #The skip_by_annotation setting catches any leftovers from the concat.
-raw.filter(7., 30., fir_design='firwin', skip_by_annotation='edge')
+raw.filter(8., 35., fir_design='firwin', skip_by_annotation='edge')
 
 #Now we grab events.
 events, event_id = events_from_annotations(raw, event_id=dict(T1=2, T2=3))
@@ -105,32 +90,29 @@ cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=rand)
 #cv_split = cv.split(epochs_data_train)
 print(rand)
 #Assemble classifiers
-cov1 = Covariances()
-csp1 = CovCSP(nfilter=4, log=True)
-var1 = VarianceThreshold(threshold=(.9 * (1 - .9)))
-lda1 = LinearDiscriminantAnalysis()
+cov = Covariances(estimator='cov')
+ts = TangentSpace(metric='riemann')
+lr = LogisticRegression(max_iter=1000)
 
-csp = CSP(n_components=4, log=True)
-var = VarianceThreshold(threshold=(.9 * (1 - .9)))
-ada = AdaBoostClassifier(n_estimators=100)
-
-
+cov1 = Covariances(estimator='cov')
+ts1 = TangentSpace(metric='euclid')
+lr1 = LogisticRegression(max_iter=1000)
 
 #Use scikit-learn pipeline with cross_val_score function
-clf = Pipeline([('COV', cov1), ('CSP', csp1), ('VAR', var1), ('LDA', lda1)])
-clf2 = Pipeline([('CSP', csp), ('VAR', var), ('ADA', ada)])
+clf = Pipeline([('COV', cov), ('TS', ts), ('LR', lr)])
+clf2 = Pipeline([('COV', cov1), ('TS', ts1), ('LR', lr1)])
 
 
 scores = cross_val_score(clf2, epochs_data, labels, cv=cv, n_jobs=1)
 class_balance = np.mean(labels == labels[0])
 class_balance = max(class_balance, 1. - class_balance)
-print("AdaBoost Classification accuracy: %f / Chance level: %f / Standard Deviation: %f" % (np.mean(scores),
+print("TS-LR Euclid Classification accuracy: %f / Chance level: %f / Standard Deviation: %f" % (np.mean(scores),
                                                                    class_balance, np.std(scores)))
 
 scores = cross_val_score(clf, epochs_data, labels, cv=cv, n_jobs=1)
 class_balance = np.mean(labels == labels[0])
 class_balance = max(class_balance, 1. - class_balance)
-print("Cov-CSP Classification accuracy: %f / Chance level: %f / Standard Deviation: %f" % (np.mean(scores),
+print("TS-LR Riemann Classification accuracy: %f / Chance level: %f / Standard Deviation: %f" % (np.mean(scores),
                                                                    class_balance, np.std(scores)))
 
 
