@@ -108,7 +108,7 @@ Parameters:
     nn_test = False, nn_select = None
     train_test_split = <function train_test_split at 0x000001FB581FC4C8>, split_subjects = True
     cross_val_times = 5
---Batch Size: 10: 
+--Batch Size: 10:
 Classifier: CSP-KNN
 test_Accuracy = 0.5130808080808081
 test_Accuracy_std = 0.0
@@ -194,7 +194,7 @@ test_ROC_AUC = 0.4993185703681207
 test_ROC_AUC_std = 0.0
 
 
---Batch Size: 20: 
+--Batch Size: 20:
 Classifier: CSP-KNN
 test_Accuracy = 0.5172504708097928
 test_Accuracy_std = 0.0
@@ -280,7 +280,7 @@ test_ROC_AUC = 0.5574580150403324
 test_ROC_AUC_std = 0.0
 
 
---Batch Size: 30: 
+--Batch Size: 30:
 Classifier: CSP-KNN
 test_Accuracy = 0.5597669579692052
 test_Accuracy_std = 0.0
@@ -366,7 +366,7 @@ test_ROC_AUC = 0.5841585108087186
 test_ROC_AUC_std = 0.0
 
 
---Batch Size: 40: 
+--Batch Size: 40:
 Classifier: CSP-KNN
 test_Accuracy = 0.5244661978740728
 test_Accuracy_std = 0.0
@@ -452,7 +452,7 @@ test_ROC_AUC = 0.5295100731675267
 test_ROC_AUC_std = 0.0
 
 
---Batch Size: 50: 
+--Batch Size: 50:
 Classifier: CSP-KNN
 test_Accuracy = 0.524381965858476
 test_Accuracy_std = 0.0
@@ -538,7 +538,7 @@ test_ROC_AUC = 0.5607351333864272
 test_ROC_AUC_std = 0.0
 
 
---Batch Size: 60: 
+--Batch Size: 60:
 Classifier: CSP-KNN
 test_Accuracy = 0.5109961712857933
 test_Accuracy_std = 0.0
@@ -624,7 +624,7 @@ test_ROC_AUC = 0.553301407308525
 test_ROC_AUC_std = 0.0
 
 
---Batch Size: 70: 
+--Batch Size: 70:
 Classifier: CSP-KNN
 test_Accuracy = 0.5295610020420602
 test_Accuracy_std = 0.0
@@ -710,7 +710,7 @@ test_ROC_AUC = 0.5647212410604988
 test_ROC_AUC_std = 0.0
 
 
---Batch Size: 80: 
+--Batch Size: 80:
 Classifier: CSP-KNN
 test_Accuracy = 0.5248212738883854
 test_Accuracy_std = 0.0
@@ -796,7 +796,7 @@ test_ROC_AUC = 0.5649618524717726
 test_ROC_AUC_std = 0.0
 
 
---Batch Size: 90: 
+--Batch Size: 90:
 Classifier: CSP-KNN
 test_Accuracy = 0.5272608754125496
 test_Accuracy_std = 0.0
@@ -882,7 +882,7 @@ test_ROC_AUC = 0.5698090416961111
 test_ROC_AUC_std = 0.0
 
 
---Batch Size: 100: 
+--Batch Size: 100:
 Classifier: CSP-KNN
 test_Accuracy = 0.5322583592114591
 test_Accuracy_std = 0.0
@@ -966,5 +966,3 @@ test_F1_Score = 0.5711622914942296
 test_F1_Score_std = 0.0
 test_ROC_AUC = 0.5732023852127199
 test_ROC_AUC_std = 0.0
-
-

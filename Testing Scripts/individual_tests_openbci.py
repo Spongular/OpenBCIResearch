@@ -12,7 +12,7 @@ for combo in combinations:
     print("\nIterating for Combination: {combo}\n\n".format(combo=combo[2]))
     for x in r:
         #Form our path/filename. Here, we're saving somewhere different to the default to make them easy to find.
-        fname = 'sub{sub}_{stim}_{type}'.format(sub=x, stim=combo[0], type=combo[1])
+        fname = 'sub{sub}_{stim}_{type}-test'.format(sub=x, stim=combo[0], type=combo[1])
         fpath = 'E:/PycharmProjects/OpenBCIResearch/CLassifierTesterResults/Individual/OpenBCI/{folder}'.format(folder=combo[2])
 
         #Form our testing class and run it.

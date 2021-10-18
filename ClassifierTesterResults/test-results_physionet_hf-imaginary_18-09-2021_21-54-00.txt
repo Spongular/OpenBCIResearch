@@ -1,0 +1,10 @@
+Results for ClassifierTester Class on dataset 'physionet'
+Date/Time: 18-09-2021_21-54-00
+Settings:
+    Type = imaginary - hf
+    Subject Range = [1, 2]
+    Result Metrics = ['acc', 'f1', 'rec', 'prec', 'roc']
+    Gridsearch = genetic    Filter Bounds = (8.0, 35.0)
+    tmin = -1, tmax = 4
+    Channels = ['Fp1', 'Fp2', 'O1', 'O2']
+    Random State = 1

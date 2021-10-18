@@ -34,6 +34,7 @@ import random
 from os import listdir, path, remove
 import fnmatch
 import re
+import gc
 
 # mne import
 import mne
@@ -63,6 +64,7 @@ from sklearn_genetic.callbacks import ConsecutiveStopping, DeltaThreshold
 # keras imports
 from tensorflow.python.keras.callbacks import ModelCheckpoint, LearningRateScheduler, EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.utils import to_categorical
+from tensorflow.keras import backend
 
 #MOABB imports
 from moabb.pipelines.utils import FilterBank
@@ -196,6 +198,7 @@ class ClassifierTester:
         #If no random state is selected, make one.
         if self.random_state is None or type(self.random_state) != int:
             self.random_state = random.randint(1, 999999)
+
 
         # First, determine where we get our data.
         if data_source == 'physionet':
@@ -452,11 +455,18 @@ class ClassifierTester:
                                     axis=0)
 
         #To get a representative split of the data, let's use shufflesplit and only take the test split.
-        ss = StratifiedShuffleSplit(n_splits=1, test_size=test_frac, random_state=self.random_state)
-        x_test, y_test = None, None
-        for train_index, test_index in ss.split(data, labels):
-            x_test = data[test_index]
-            y_test = labels[test_index]
+        if test_frac >= 1:
+            x_test = data
+            y_test = labels
+        else:
+            ss = StratifiedShuffleSplit(n_splits=1, test_size=float(test_frac), random_state=self.random_state)
+            x_test, y_test = None, None
+            first = True
+            for train_index, test_index in ss.split(data, labels):
+                if not first: continue
+                x_test = data[test_index]
+                y_test = labels[test_index]
+                first = False
         del data, labels
 
         # Generate the classifiers to test.
@@ -1025,7 +1035,7 @@ class ClassifierTester:
     # An implementation of Deep ConvNet.
     # Available at: https://onlinelibrary.wiley.com/doi/full/10.1002/hbm.23730
     def __deep_convnet(self, data_shape, dropout=0.5, n_classes=2, lr_scheduler=False, check_p=True,
-                       e_stop=False, lr_plateau=False, l_rate=0.0001):
+                       e_stop=False, lr_plateau=True, l_rate=0.0001):
 
         # First, construct the model and compile it.
         model, opt = keras_classifiers.DeepConvNet(nb_classes=n_classes, Chans=data_shape[1], Samples=data_shape[2],
@@ -1074,7 +1084,7 @@ class ClassifierTester:
     # An implementation of Deep ConvNet.
     # Available at: https://onlinelibrary.wiley.com/doi/full/10.1002/hbm.23730
     def __shallow_convnet(self, data_shape, dropout=0.5, n_classes=2, lr_scheduler=False, check_p=True,
-                       e_stop=False, lr_plateau=False, l_rate=1e-3):
+                       e_stop=False, lr_plateau=True, l_rate=1e-3):
 
         # First, construct the model and compile it.
         model, opt = keras_classifiers.ShallowConvNet(nb_classes=n_classes, Chans=data_shape[1], Samples=data_shape[2],
@@ -1160,7 +1170,7 @@ class ClassifierTester:
 
         # This is the dictionary of details for the fit method.
         fit_dict = {
-            'batch_size': 64,
+            'batch_size': 32,
             'epochs': 100,
             'callbacks': callbacks,
             'checkpoint' : filepath
@@ -1321,10 +1331,7 @@ class ClassifierTester:
 
         for b_size, result in results.items():
             self.__print("--Batch Size: {n}: \n".format(n=b_size))
-            if self.avg:
-                self.__print_average_results(result)
-            else:
-                self.__print_results(result)
+            self.__print_average_results(result)
             self.__print("\n")
         return
 
@@ -1374,9 +1381,13 @@ class ClassifierTester:
                     (labels, self.sub_dict[sub2]['labels']),
                     axis=0)
 
+            test_data, test_labels = self.sub_dict[sub1]['data'], self.sub_dict[sub1]['labels']
+            data, labels = shuffle(data, labels)
+            test_data, test_labels = shuffle(test_data, test_labels)
+
             #Now, we train on our data, and test on the subject.
             self.__train(data, labels)
-            results[sub1] = self.__test(self.sub_dict[sub1], self.sub_dict[sub1])
+            results[sub1] = self.__test(test_data, test_labels)
 
         #Now we print.
         for sub, result in results.items():
@@ -1392,6 +1403,11 @@ class ClassifierTester:
     ##------------------------------------------------------------------------------------------------------------------
     ##Testing Tools
     ##------------------------------------------------------------------------------------------------------------------
+    def __clear(self):
+        self.nn_dict.clear()
+        backend.clear_session()
+        gc.collect()
+        return
 
     def __train(self, data, labels):
         if self.sk_test:
@@ -1401,6 +1417,7 @@ class ClassifierTester:
         if self.nn_test:
             #First, remember that Keras models, when called with fit(), do not overwrite previous weights,
             #but rather continue to train from where they were left. So, we re-initialise the networks now.
+            self.__clear()
             self.initialise_neural_networks()
 
 
@@ -1604,9 +1621,8 @@ class ClassifierTester:
         #Here, we iterate through the key pairs, adding the values and finding the average.
         for name, metrics in final_results.items():
             for key in metrics.keys():
-                while count < len(results):
-                    final_results[name][key] = final_results[name][key] + results[count][name][key]
-                    count = count + 1
-                final_results[name][key] = final_results[name][key] / count
-                count = 1
+                res_list = []
+                for res in results:
+                    res_list.append(res[name][key])
+                final_results[name][key] = res_list
         return final_results

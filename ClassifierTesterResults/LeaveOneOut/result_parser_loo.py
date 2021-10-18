@@ -8,14 +8,13 @@ import re
 import openpyxl
 
 #These are used for looping.
-stim_combos = [('hf', 'imaginary'), ('hf', 'movement'), ('lr', 'imaginary'), ('lr', 'movement')]
-ch_layouts = ['64ch', 'headband', 'motor_cortex']
+stim_combos = [('hf', 'movement'), ('lr', 'movement')]
 columns = None
 
-classifier_type = 'ml'
+classifier_type = 'nn'
 if classifier_type == 'nn':
     fpath='NN'
-    columns = ['layout', 'batch_size',
+    columns = ['layout', 'batch_no',
                'eegnet_accuracy', 'eegnet_accuracy_stddev', 'eegnet_recall', 'eegnet_precision', 'eegnet_f1',
                'eegnet_roc-auc', 'fusion_eegnet_accuracy', 'fusion_eegnet_accuracy_stddev', 'fusion_eegnet_recall',
                'fusion_eegnet_precision', 'fusion_eegnet_f1', 'fusion_eegnet_roc-auc',
@@ -36,40 +35,75 @@ else:
 
 #This is the general format for the file names.
 #sub = subject number, stim = stimulus type, resp = response type, ch = channel layout
-file_name_blank = "batch_{stim}_{resp}_{ch}_{clf}"
-
+file_name_blank = "loo_{stim}_{resp}_openbci_{clf}"
+layout = 'motor_cortex'
 for stim in stim_combos:
     #Create an empty dataframe with our columns
     data_frame = pd.DataFrame(columns=columns, dtype=str)
-    for layout in ch_layouts:
-        print(layout + " " + str(stim))
-        #Open the non-fb file.
-        fname = file_name_blank.format(stim=stim[0], resp=stim[1], ch=layout, clf=classifier_type)
+    print(str(stim))
+    #Open the non-fb file.
+    fname = file_name_blank.format(stim=stim[0], resp=stim[1], clf=classifier_type)
+    path = "{path}/{fname}.txt".format(path=fpath, fname=fname)
+    with io.open(path, 'r') as file:
+        contents = file.readlines()
+
+    #Now, we fill the list with our data.
+    #This will be a 2d list.
+    data_list = []
+    cur_row = []
+    pat1 = re.compile(r"test_\w* = ")
+    pat2 = re.compile(r"test_\w*_std = ")
+    pat3 = re.compile(r"test_\w*Accuracy_std = ")
+    bat1 = re.compile(r"--Batch No. ")
+    bat2 = re.compile(r":\w*")
+    for line in contents:
+        #Keep track of batch size here.
+        if bat1.search(line) is not None:
+            if len(cur_row) > 1:
+                data_list.append(cur_row)
+                cur_row = []
+            batch = line.strip('\n')
+            batch = re.sub(bat1, '', batch)
+            batch = re.sub(bat2, '', batch)
+            cur_row.append(layout)
+            cur_row.append(batch)
+        #Keep track of the data rows here.
+        elif pat3.search(line) is not None:
+            data = line.strip('\n')
+            data = re.sub(pat3, '', data)
+            cur_row.append(data)
+        elif pat1.search(line) is not None and pat2.search(line) is None and len(cur_row) > 0:
+            data = line.strip('\n')
+            data = re.sub(pat1, '', data)
+            cur_row.append(data)
+    data_list.append(cur_row)
+
+    # Open the fb file.
+    if classifier_type == 'ml':
+        fname = fname + '_fb'
         path = "{path}/{fname}.txt".format(path=fpath, fname=fname)
         with io.open(path, 'r') as file:
             contents = file.readlines()
 
-        #Now, we fill the list with our data.
-        #This will be a 2d list.
-        data_list = []
+        data_list2 = []
         cur_row = []
         pat1 = re.compile(r"test_\w* = ")
         pat2 = re.compile(r"test_\w*_std = ")
         pat3 = re.compile(r"test_\w*Accuracy_std = ")
-        bat1 = re.compile(r"--Batch Size: ")
+        bat1 = re.compile(r"--Batch No. ")
         bat2 = re.compile(r":\w*")
         for line in contents:
-            #Keep track of batch size here.
+            # Keep track of batch size here.
             if bat1.search(line) is not None:
                 if len(cur_row) > 1:
-                    data_list.append(cur_row)
+                    data_list2.append(cur_row)
                     cur_row = []
                 batch = line.strip('\n')
                 batch = re.sub(bat1, '', batch)
                 batch = re.sub(bat2, '', batch)
                 cur_row.append(layout)
                 cur_row.append(batch)
-            #Keep track of the data rows here.
+            # Keep track of the data rows here.
             elif pat3.search(line) is not None:
                 data = line.strip('\n')
                 data = re.sub(pat3, '', data)
@@ -78,54 +112,18 @@ for stim in stim_combos:
                 data = line.strip('\n')
                 data = re.sub(pat1, '', data)
                 cur_row.append(data)
-        data_list.append(cur_row)
+        data_list2.append(cur_row)
 
-        # Open the fb file.
-        if classifier_type == 'ml':
-            fname = fname + '_fb'
-            path = "{path}/{fname}.txt".format(path=fpath, fname=fname)
-            with io.open(path, 'r') as file:
-                contents = file.readlines()
-
-            data_list2 = []
-            cur_row = []
-            pat1 = re.compile(r"test_\w* = ")
-            pat2 = re.compile(r"test_\w*_std = ")
-            pat3 = re.compile(r"test_\w*Accuracy_std = ")
-            bat1 = re.compile(r"--Batch Size: ")
-            bat2 = re.compile(r":\w*")
-            for line in contents:
-                # Keep track of batch size here.
-                if bat1.search(line) is not None:
-                    if len(cur_row) > 1:
-                        data_list2.append(cur_row)
-                        cur_row = []
-                    batch = line.strip('\n')
-                    batch = re.sub(bat1, '', batch)
-                    batch = re.sub(bat2, '', batch)
-                    cur_row.append(layout)
-                    cur_row.append(batch)
-                # Keep track of the data rows here.
-                elif pat3.search(line) is not None:
-                    data = line.strip('\n')
-                    data = re.sub(pat3, '', data)
-                    cur_row.append(data)
-                elif pat1.search(line) is not None and pat2.search(line) is None and len(cur_row) > 0:
-                    data = line.strip('\n')
-                    data = re.sub(pat1, '', data)
-                    cur_row.append(data)
-            data_list2.append(cur_row)
-
-            #Now, we combine our data lists. We basically want to extend each row of the normal data with the fb data.
-            for x in range(0, len(data_list)):
-                #We extend it with the sliced form of 2, to remove the batch and layout details frm the second list.
-                data_list[x].extend(data_list2[x][2:])
+        #Now, we combine our data lists. We basically want to extend each row of the normal data with the fb data.
+        for x in range(0, len(data_list)):
+            #We extend it with the sliced form of 2, to remove the batch and layout details frm the second list.
+            data_list[x].extend(data_list2[x][2:])
 
 
-        #And finally we append our rows to our data frame.
-        for row in data_list:
-            r = pd.Series(row, index=data_frame.columns)
-            data_frame = data_frame.append(r, ignore_index=True)
+    #And finally we append our rows to our data frame.
+    for row in data_list:
+        r = pd.Series(row, index=data_frame.columns)
+        data_frame = data_frame.append(r, ignore_index=True)
 
     print(data_frame)
     filename = "{stim}-Parsed_Results_{cls}.xlsx".format(stim=stim[0]+stim[1], cls=classifier_type)

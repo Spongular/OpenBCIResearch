@@ -1,0 +1,32 @@
+Results for ClassifierTester Class on dataset 'live-movement'
+Date/Time: 18-10-2021_18-55-09
+Settings:
+    Type = movement - lr
+    Subject Range = [1, 6]
+    Result Metrics = ['acc', 'f1', 'rec', 'prec', 'roc']
+    Gridsearch = None    Filter Bounds = (8.0, 35.0)
+    Notch Filter = None
+    tmin = -1, tmax = 4
+    Channels = All
+    Random State = 772217
+--BATCH TEST--
+Parameters:
+    batch_size = 5
+    n_times = 5
+    sk_test = True, sk_select = None
+    nn_test = False, nn_select = None
+    train_test_split = <function train_test_split at 0x000001FAF03AA438>, split_subjects = True
+    cross_val_times = 5
+--Batch No. 1: 
+Classifier: FBCSP-SVM
+test_Accuracy = 0.5166666666666667
+test_Accuracy_std = 0.02916666666666669
+test_Recall = 0.4125
+test_Recall_std = 0.21303038385273695
+test_Precision = 0.514279548324535
+test_Precision_std = 0.028510950618709233
+test_F1_Score = 0.4210259891968716
+test_F1_Score_std = 0.18313067375851472
+test_ROC_AUC = 0.5166666666666667
+test_ROC_AUC_std = 0.029166666666666646
+
