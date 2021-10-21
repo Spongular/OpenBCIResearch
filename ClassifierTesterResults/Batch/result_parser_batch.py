@@ -12,7 +12,7 @@ stim_combos = [('hf', 'imaginary'), ('hf', 'movement'), ('lr', 'imaginary'), ('l
 ch_layouts = ['64ch', 'headband', 'motor_cortex']
 columns = None
 
-classifier_type = 'ml'
+classifier_type = 'nn'
 if classifier_type == 'nn':
     fpath='NN'
     columns = ['layout', 'batch_size',

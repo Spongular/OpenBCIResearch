@@ -2,18 +2,14 @@ from ClassifierTester import ClassifierTester
 import random
 
 #The sets of stimuli/operations to test.
-# combinations = [('hf', 'imaginary'), ('hf', 'movement'),
-#                 ('lr', 'imaginary'), ('lr', 'movement')]
 combinations = [('hf', 'imaginary'), ('hf', 'movement'),
-                ('lr', 'imaginary')]
+                ('lr', 'imaginary'), ('lr', 'movement')]
 rand = random.randint(1, 999999)
 rand = 162433
 
 #For Machine Learning---------------------------------------------------------------------------------------------------
 #Full 64 Channels
 for combo in combinations:
-    if combo in [('hf', 'imaginary'), ('hf', 'movement'), ('lr', 'imaginary')]:
-        continue
     print("\nIterating for Combination: {c1}-{c2}\n\n".format(c1=combo[0], c2=combo[1]))
     # Form our path/filename. Here, we're saving somewhere different to the default to make them easy to find.
     fname = 'batch_{stim}_{type}_64ch_nn'.format(stim=combo[0], type=combo[1])
@@ -23,10 +19,10 @@ for combo in combinations:
     test = ClassifierTester(subj_range=[1, 110], data_source='physionet', stim_select=combo[0], stim_type=combo[1],
                             result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'], tmin=0, tmax=4, notch=60,
                             f_name=fname, f_path=fpath, random_state=rand, p_select=None, filter_bounds=(2., 60.))
-    test.run_increment_batch_test(batch_size=10, incr_value=10, max_batch_size=109, n_times=3, sk_test=False,
+    test.run_increment_batch_test(batch_size=10, incr_value=10, max_batch_size=109, n_times=5, sk_test=False,
                                   nn_test=True, split_subject=True, test_split=0.2)
     del test
-quit()
+
 #Headband Config
 for combo in combinations:
     print("\nIterating for Combination: {c1}-{c2}\n\n".format(c1=combo[0], c2=combo[1]))

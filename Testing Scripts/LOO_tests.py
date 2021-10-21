@@ -36,13 +36,13 @@ for combo in combinations:
                         split_subject=True)
     del test
 
-    # For NNs
-    # nn_path = fpath + 'NN'
-    # nn_name = fname + '_nn'
-    # test = ClassifierTester(subj_range=[2, 6], data_source='live-movement', stim_select=combo[0], stim_type=combo[1],
-    #                         result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'], tmin=0, tmax=4, notch=50,
-    #                         f_name=nn_name, f_path=nn_path, random_state=rand, p_select=None, filter_bounds=(2., 60.),
-    #                         live_layout='m_cortex')
-    # test.run_batch_test(batch_size=4, n_times=5, nn_test=True, test_split=0.2, cross_val_times=5, sk_test=False,
-    #                     split_subject=True)
+    #For NNs
+    nn_path = fpath + 'NN'
+    nn_name = fname + '_nn'
+    test = ClassifierTester(subj_range=[2, 6], data_source='live-movement', stim_select=combo[0], stim_type=combo[1],
+                            result_metrics=['acc', 'f1', 'rec', 'prec', 'roc'], tmin=0, tmax=4, notch=50,
+                            f_name=nn_name, f_path=nn_path, random_state=rand, p_select=None, filter_bounds=(2., 60.),
+                            live_layout='m_cortex')
+    test.run_batch_test(batch_size=4, n_times=5, nn_test=True, test_split=0.2, cross_val_times=5, sk_test=False,
+                        split_subject=True)
     del test
