@@ -1,8 +1,7 @@
-# Authors: Clemens Brunner <clemens.brunner@gmail.com>
-#          Felix Klotzsche <klotzsche@cbs.mpg.de>
-#
-# License: BSD (3-clause)
 
+from os import listdir, path, remove
+import fnmatch
+import LiveBCI
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -11,17 +10,35 @@ import mne
 from mne.time_frequency import tfr_multitaper
 from mne.stats import permutation_cluster_1samp_test as pcluster_test
 from mne.viz.utils import center_cmap
-import data_loading
 
+#options
+live_layout = 'm_cortex'
+sub = 2
+stim_select = 'hf'
 
-# load and preprocess data ####################################################
-# raw = data_loading.get_all_mi_between(1, 21, 4, ["088", "092", "100"])
-#
-# raw.rename_channels(lambda x: x.strip('.'))  # remove dots from channel names
-#
-# events, _ = mne.events_from_annotations(raw, event_id=dict(T0=1, T1=2, T2=3))
-#
-# picks = mne.pick_channels(raw.info["ch_names"], ["C3", "Cz", "C4"])
+#Grab the file names and filter to match what is needed.
+rootpath = 'E:\\PycharmProjects\\OpenBCIResearch\\DataGathering\\LiveRecordings\\MotorResponses\\Movement\\'
+file_paths = listdir(rootpath)
+if live_layout == 'headband':
+    files = fnmatch.filter(file_paths, 'subject{sub}-??_??_????-mm-{stim}*'.format(sub=sub,
+                                                                                     stim=stim_select))
+elif live_layout == 'm_cortex':
+    files = fnmatch.filter(file_paths, 'subject{sub}-??_??_????-m_cortex_electrode_placement-mm-{stim}*'.format(sub=sub,
+                                                                                     stim=stim_select))
+else:
+    raise Exception("Error: 'live_layout' must be either 'headband' or 'm_cortex'")
+
+#Format the file paths and load them through LiveBCI
+file_paths = []
+for file_name in files:
+    file_paths.append(rootpath + file_name)
+dloader = LiveBCI.MotorImageryStimulator(stim_time=4, wait_time=4, stim_count=5, stim_type='lr',
+                                         board=None)
+dloader.load_multiple_data(files=file_paths)
+raw = dloader.raw
+print(raw.info)
+picks = mne.pick_channels(raw.info["ch_names"], ["C3", "Cz", "C4"])
+events = mne.find_events(raw=raw, stim_channel='STI001')
 
 # epoch data ##################################################################
 tmin, tmax = -1, 4  # define epochs around events (in s)

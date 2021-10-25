@@ -30,7 +30,6 @@ for combo in combinations:
     test.run_increment_batch_test(batch_size=10, incr_value=10, max_batch_size=109, n_times=5, sk_test=True,
                                   nn_test=False, split_subject=True)
     del test
-quit()
 #Headband Config
 for combo in combinations:
     print("\nIterating for Combination: {c1}-{c2}\n\n".format(c1=combo[0], c2=combo[1]))
