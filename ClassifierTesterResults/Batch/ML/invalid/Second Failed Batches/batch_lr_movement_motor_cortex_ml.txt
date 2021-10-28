@@ -1,0 +1,970 @@
+
+Performing parameter search on pipeline: CSP-KNN
+
+Performing GASearchCV to find optimal parameter set...
+GASearchCV completed in 97.409s
+Displaying Results...
+Best score: 0.529
+Best parameters set:
+	CSP__cov_est: 'epoch'
+	CSP__n_components: 8
+	KNN__algorithm: 'brute'
+	KNN__n_neighbors: 4
+	KNN__weights: 'uniform'
+	VAR__threshold: 0.001
+
+Performing parameter search on pipeline: CSP-SVM
+
+Performing GASearchCV to find optimal parameter set...
+GASearchCV completed in 158.274s
+Displaying Results...
+Best score: 0.588
+Best parameters set:
+	CSP__cov_est: 'epoch'
+	CSP__n_components: 6
+	SVC__C: 10.0
+	SVC__kernel: 'linear'
+	VAR__threshold: 0.0025
+
+Performing parameter search on pipeline: CSP-LDA
+
+Performing GASearchCV to find optimal parameter set...
+GASearchCV completed in 48.956s
+Displaying Results...
+Best score: 0.592
+Best parameters set:
+	CSP__cov_est: 'epoch'
+	CSP__n_components: 7
+	LDA__solver: 'lsqr'
+	VAR__threshold: 0.0
+
+Performing parameter search on pipeline: MDM
+
+Performing GASearchCV to find optimal parameter set...
+GASearchCV completed in 56.802s
+Displaying Results...
+Best score: 0.563
+Best parameters set:
+	COV__estimator: 'corr'
+	MDM__metric: 'wasserstein'
+
+Performing parameter search on pipeline: TS-LR
+
+Performing GASearchCV to find optimal parameter set...
+GASearchCV completed in 78.332s
+Displaying Results...
+Best score: 0.588
+Best parameters set:
+	COV__estimator: 'scm'
+	LR__C: 0.01
+	TS__metric: 'euclid'
+
+Performing parameter search on pipeline: CovCSP-LDA
+
+Performing GASearchCV to find optimal parameter set...
+GASearchCV completed in 40.232s
+Displaying Results...
+Best score: 0.602
+Best parameters set:
+	COV__estimator: 'lwf'
+	CSP__metric: 'euclid'
+	CSP__nfilter: 4
+	LDA__solver: 'eigen'
+
+Performing parameter search on pipeline: CovCSP-LR
+
+Performing GASearchCV to find optimal parameter set...
+GASearchCV completed in 45.494s
+Displaying Results...
+Best score: 0.602
+Best parameters set:
+	COV__estimator: 'oas'
+	CSP__metric: 'logdet'
+	CSP__nfilter: 6
+	LR__C: 0.1
+
+All Parameter Searches Completed.
+Time Elapsed: 525.5021185874939
+
+Results for ClassifierTester Class on dataset 'physionet'
+Date/Time: 13-10-2021_21-17-16
+Settings:
+    Type = movement - lr
+    Subject Range = [1, 110]
+    Result Metrics = ['acc', 'f1', 'rec', 'prec', 'roc']
+    Gridsearch = genetic    Filter Bounds = (8.0, 35.0)
+    Notch Filter = None
+    tmin = -1, tmax = 4
+    Channels = ['C3', 'Cz', 'C4']
+    Random State = 608793
+
+Warning: parameter 'max_batch_size' has been decreased to the total subject count 102
+--INCREMENTAL BATCH TEST--
+Parameters:
+    batch_size = 10
+    incr_value = 10
+    max_batch_size = 102
+    sk_test = True, sk_select = None
+    nn_test = False, nn_select = None
+    train_test_split = <function train_test_split at 0x000001797292A5E8>, split_subjects = True
+    cross_val_times = 5
+--Batch Size: 10: 
+Classifier: CSP-KNN
+test_Accuracy = 0.5111111111111111
+test_Accuracy_std = 0.0
+test_Recall = 0.27378400314484475
+test_Recall_std = 0.0
+test_Precision = 0.5551899081310846
+test_Precision_std = 0.0
+test_F1_Score = 0.34830050650881383
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5142832874492835
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-SVM
+test_Accuracy = 0.5777777777777777
+test_Accuracy_std = 0.0
+test_Recall = 0.3965478157866773
+test_Recall_std = 0.0
+test_Precision = 0.6600500625782229
+test_Precision_std = 0.0
+test_F1_Score = 0.4714072936867055
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5798141429787408
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-LDA
+test_Accuracy = 0.5822222222222222
+test_Accuracy_std = 0.0
+test_Recall = 0.5247414858087577
+test_Recall_std = 0.0
+test_Precision = 0.6488960113960114
+test_Precision_std = 0.0
+test_F1_Score = 0.5342066386161759
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5836954631181552
+test_ROC_AUC_std = 0.0
+
+Classifier: MDM
+test_Accuracy = 0.5111111111111111
+test_Accuracy_std = 0.0
+test_Recall = 0.3680172331928888
+test_Recall_std = 0.0
+test_Precision = 0.4802515408962186
+test_Precision_std = 0.0
+test_F1_Score = 0.34807418446762706
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5144196390251938
+test_ROC_AUC_std = 0.0
+
+Classifier: TS-LR
+test_Accuracy = 0.5333333333333332
+test_Accuracy_std = 0.0
+test_Recall = 0.5181815248194355
+test_Recall_std = 0.0
+test_Precision = 0.5603291753291754
+test_Precision_std = 0.0
+test_F1_Score = 0.4849014206117036
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5325305634709072
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LDA
+test_Accuracy = 0.5755555555555556
+test_Accuracy_std = 0.0
+test_Recall = 0.5121778549646803
+test_Recall_std = 0.0
+test_Precision = 0.6510840886177119
+test_Precision_std = 0.0
+test_F1_Score = 0.5209886264216973
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5776049688633859
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LR
+test_Accuracy = 0.5733333333333334
+test_Accuracy_std = 0.0
+test_Recall = 0.5063353562299413
+test_Recall_std = 0.0
+test_Precision = 0.6469028415148564
+test_Precision_std = 0.0
+test_F1_Score = 0.5141816045041852
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5742590752739625
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 20: 
+Classifier: CSP-KNN
+test_Accuracy = 0.5458568738229754
+test_Accuracy_std = 0.0
+test_Recall = 0.3808523436613324
+test_Recall_std = 0.0
+test_Precision = 0.5878915206575817
+test_Precision_std = 0.0
+test_F1_Score = 0.4398801009237442
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5441817046873226
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-SVM
+test_Accuracy = 0.6005273069679848
+test_Accuracy_std = 0.0
+test_Recall = 0.6353183520599252
+test_Recall_std = 0.0
+test_Precision = 0.6224808679647389
+test_Precision_std = 0.0
+test_F1_Score = 0.5978656460765539
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.6018903865227754
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-LDA
+test_Accuracy = 0.6005461393596987
+test_Accuracy_std = 0.0
+test_Recall = 0.6328441720576552
+test_Recall_std = 0.0
+test_Precision = 0.6186616901716778
+test_Precision_std = 0.0
+test_F1_Score = 0.5948178960576944
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.6017421651789019
+test_ROC_AUC_std = 0.0
+
+Classifier: MDM
+test_Accuracy = 0.548210922787194
+test_Accuracy_std = 0.0
+test_Recall = 0.7111553739643627
+test_Recall_std = 0.0
+test_Precision = 0.5653525488858021
+test_Precision_std = 0.0
+test_F1_Score = 0.5857593053588048
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5510750642724263
+test_ROC_AUC_std = 0.0
+
+Classifier: TS-LR
+test_Accuracy = 0.6208662900188324
+test_Accuracy_std = 0.0
+test_Recall = 0.6309232777210305
+test_Recall_std = 0.0
+test_Precision = 0.6516410964149019
+test_Precision_std = 0.0
+test_F1_Score = 0.6159171234341663
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.6225800629647722
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LDA
+test_Accuracy = 0.5983050847457627
+test_Accuracy_std = 0.0
+test_Recall = 0.6306225173079105
+test_Recall_std = 0.0
+test_Precision = 0.6159072852249
+test_Precision_std = 0.0
+test_F1_Score = 0.5908712272958159
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5995443812822904
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LR
+test_Accuracy = 0.6094726930320151
+test_Accuracy_std = 0.0
+test_Recall = 0.6349659516513448
+test_Recall_std = 0.0
+test_Precision = 0.6279612141271675
+test_Precision_std = 0.0
+test_F1_Score = 0.5998084882978609
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.6105344357103029
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 30: 
+Classifier: CSP-KNN
+test_Accuracy = 0.556554307116105
+test_Accuracy_std = 0.0
+test_Recall = 0.4541206478921286
+test_Recall_std = 0.0
+test_Precision = 0.5730276519177342
+test_Precision_std = 0.0
+test_F1_Score = 0.5062275654156546
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5570569195357471
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-SVM
+test_Accuracy = 0.5925093632958801
+test_Accuracy_std = 0.0
+test_Recall = 0.6612119987011186
+test_Recall_std = 0.0
+test_Precision = 0.5869424309234736
+test_Precision_std = 0.0
+test_F1_Score = 0.6169395275542497
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5920283519826526
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-LDA
+test_Accuracy = 0.5910112359550561
+test_Accuracy_std = 0.0
+test_Recall = 0.6716815536151434
+test_Recall_std = 0.0
+test_Precision = 0.5830540928506643
+test_Precision_std = 0.0
+test_F1_Score = 0.6190235705160959
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5905123591892877
+test_ROC_AUC_std = 0.0
+
+Classifier: MDM
+test_Accuracy = 0.5580524344569289
+test_Accuracy_std = 0.0
+test_Recall = 0.6472052716997413
+test_Recall_std = 0.0
+test_Precision = 0.5572245027314233
+test_Precision_std = 0.0
+test_F1_Score = 0.5890245310575541
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5566025494389437
+test_ROC_AUC_std = 0.0
+
+Classifier: TS-LR
+test_Accuracy = 0.6172284644194757
+test_Accuracy_std = 0.0
+test_Recall = 0.7014556902677384
+test_Recall_std = 0.0
+test_Precision = 0.6012419139230905
+test_Precision_std = 0.0
+test_F1_Score = 0.6451481241424059
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.6166424164372857
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LDA
+test_Accuracy = 0.5925093632958802
+test_Accuracy_std = 0.0
+test_Recall = 0.6731646722815926
+test_Recall_std = 0.0
+test_Precision = 0.5847613822495746
+test_Precision_std = 0.0
+test_F1_Score = 0.6208663308360484
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.592039984308578
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LR
+test_Accuracy = 0.599250936329588
+test_Accuracy_std = 0.0
+test_Recall = 0.6732193193320136
+test_Recall_std = 0.0
+test_Precision = 0.5926040128011428
+test_Precision_std = 0.0
+test_F1_Score = 0.6248434777630082
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5988470841658036
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 40: 
+Classifier: CSP-KNN
+test_Accuracy = 0.5353799711975185
+test_Accuracy_std = 0.0
+test_Recall = 0.3241844099413932
+test_Recall_std = 0.0
+test_Precision = 0.562939322908518
+test_Precision_std = 0.0
+test_F1_Score = 0.4096433960237052
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5350931142096923
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-SVM
+test_Accuracy = 0.5829919764515975
+test_Accuracy_std = 0.0
+test_Recall = 0.6116980096253839
+test_Recall_std = 0.0
+test_Precision = 0.5750555432357192
+test_Precision_std = 0.0
+test_F1_Score = 0.5873661440787284
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5832374758097019
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-LDA
+test_Accuracy = 0.5863673265916536
+test_Accuracy_std = 0.0
+test_Recall = 0.6084733246269558
+test_Recall_std = 0.0
+test_Precision = 0.5799725880753918
+test_Precision_std = 0.0
+test_F1_Score = 0.588961807482775
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5866224753452526
+test_ROC_AUC_std = 0.0
+
+Classifier: MDM
+test_Accuracy = 0.5538171200683664
+test_Accuracy_std = 0.0
+test_Recall = 0.6557763065612228
+test_Recall_std = 0.0
+test_Precision = 0.5459271151843156
+test_Precision_std = 0.0
+test_F1_Score = 0.5929781250280135
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5542882425030664
+test_ROC_AUC_std = 0.0
+
+Classifier: TS-LR
+test_Accuracy = 0.5886650366361234
+test_Accuracy_std = 0.0
+test_Recall = 0.600277374704749
+test_Recall_std = 0.0
+test_Precision = 0.587206320881759
+test_Precision_std = 0.0
+test_F1_Score = 0.5861685802760738
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5889986524152167
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LDA
+test_Accuracy = 0.590279874661729
+test_Accuracy_std = 0.0
+test_Recall = 0.612942884551823
+test_Recall_std = 0.0
+test_Precision = 0.5834852403333608
+test_Precision_std = 0.0
+test_F1_Score = 0.5930735185491925
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5905462861048533
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LR
+test_Accuracy = 0.5942159236575987
+test_Accuracy_std = 0.0
+test_Recall = 0.6186251380525124
+test_Recall_std = 0.0
+test_Precision = 0.5875383680393413
+test_Precision_std = 0.0
+test_F1_Score = 0.5978046897878914
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5945236736745353
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 50: 
+Classifier: CSP-KNN
+test_Accuracy = 0.5444902352016445
+test_Accuracy_std = 0.0
+test_Recall = 0.37165391096043365
+test_Recall_std = 0.0
+test_Precision = 0.5705629476530618
+test_Precision_std = 0.0
+test_F1_Score = 0.44277965046594775
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.545371673716091
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-SVM
+test_Accuracy = 0.586586129753915
+test_Accuracy_std = 0.0
+test_Recall = 0.6551551493128159
+test_Recall_std = 0.0
+test_Precision = 0.5793712564533764
+test_Precision_std = 0.0
+test_F1_Score = 0.6083049779129173
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5878389914956285
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-LDA
+test_Accuracy = 0.5897121551081282
+test_Accuracy_std = 0.0
+test_Recall = 0.647868282953369
+test_Recall_std = 0.0
+test_Precision = 0.5832418414341449
+test_Precision_std = 0.0
+test_F1_Score = 0.6082180623807769
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5908623746389904
+test_ROC_AUC_std = 0.0
+
+Classifier: MDM
+test_Accuracy = 0.5534033496583832
+test_Accuracy_std = 0.0
+test_Recall = 0.7596207038307721
+test_Recall_std = 0.0
+test_Precision = 0.5397964394900592
+test_Precision_std = 0.0
+test_F1_Score = 0.628344810066197
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5539551283376758
+test_ROC_AUC_std = 0.0
+
+Classifier: TS-LR
+test_Accuracy = 0.5731027671967269
+test_Accuracy_std = 0.0
+test_Recall = 0.6434314033983638
+test_Recall_std = 0.0
+test_Precision = 0.5661848228652362
+test_Precision_std = 0.0
+test_F1_Score = 0.5964120473128978
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5743188972827611
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LDA
+test_Accuracy = 0.5897061087933572
+test_Accuracy_std = 0.0
+test_Recall = 0.6425347398444954
+test_Recall_std = 0.0
+test_Precision = 0.5838902002744163
+test_Precision_std = 0.0
+test_F1_Score = 0.6060701881127667
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5908782841852827
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LR
+test_Accuracy = 0.5843247274119758
+test_Accuracy_std = 0.0
+test_Recall = 0.6380888517834304
+test_Recall_std = 0.0
+test_Precision = 0.5794947038100875
+test_Precision_std = 0.0
+test_F1_Score = 0.6011354763734534
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5855637378553091
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 60: 
+Classifier: CSP-KNN
+test_Accuracy = 0.5325346575625904
+test_Accuracy_std = 0.0
+test_Recall = 0.37826901813374636
+test_Recall_std = 0.0
+test_Precision = 0.5488369383147622
+test_Precision_std = 0.0
+test_F1_Score = 0.445188839366417
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5330486754839011
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-SVM
+test_Accuracy = 0.5975563831988413
+test_Accuracy_std = 0.0
+test_Recall = 0.6125640438093771
+test_Recall_std = 0.0
+test_Precision = 0.599254714796942
+test_Precision_std = 0.0
+test_F1_Score = 0.5952932688765699
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5983099693060223
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-LDA
+test_Accuracy = 0.5971818746120421
+test_Accuracy_std = 0.0
+test_Recall = 0.6265196997117347
+test_Recall_std = 0.0
+test_Precision = 0.5965246644844655
+test_Precision_std = 0.0
+test_F1_Score = 0.6002381915373005
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5977622798508724
+test_ROC_AUC_std = 0.0
+
+Classifier: MDM
+test_Accuracy = 0.5708152286364576
+test_Accuracy_std = 0.0
+test_Recall = 0.5984544559987475
+test_Recall_std = 0.0
+test_Precision = 0.5695834864423172
+test_Precision_std = 0.0
+test_F1_Score = 0.576688336531673
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5702800722951025
+test_ROC_AUC_std = 0.0
+
+Classifier: TS-LR
+test_Accuracy = 0.5834388578522656
+test_Accuracy_std = 0.0
+test_Recall = 0.6138936171217171
+test_Recall_std = 0.0
+test_Precision = 0.5846822098798653
+test_Precision_std = 0.0
+test_F1_Score = 0.5846843258826502
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5841311174072515
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LDA
+test_Accuracy = 0.5949555141733912
+test_Accuracy_std = 0.0
+test_Recall = 0.6190619888832375
+test_Recall_std = 0.0
+test_Precision = 0.5956151057184589
+test_Precision_std = 0.0
+test_F1_Score = 0.596645906786103
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5955264814429887
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LR
+test_Accuracy = 0.5953341609766191
+test_Accuracy_std = 0.0
+test_Recall = 0.621235306967324
+test_Recall_std = 0.0
+test_Precision = 0.5956239212246462
+test_Precision_std = 0.0
+test_F1_Score = 0.5978341034240893
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5958582890521782
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 70: 
+Classifier: CSP-KNN
+test_Accuracy = 0.5492249010286823
+test_Accuracy_std = 0.0
+test_Recall = 0.38203881861118894
+test_Recall_std = 0.0
+test_Precision = 0.5744743500036111
+test_Precision_std = 0.0
+test_F1_Score = 0.45744562617703777
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5489014957457092
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-SVM
+test_Accuracy = 0.5815973738406033
+test_Accuracy_std = 0.0
+test_Recall = 0.6467008419924261
+test_Recall_std = 0.0
+test_Precision = 0.5735611531392063
+test_Precision_std = 0.0
+test_F1_Score = 0.6065077436592619
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5815526355771847
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-LDA
+test_Accuracy = 0.5838672143730907
+test_Accuracy_std = 0.0
+test_Recall = 0.623582445041781
+test_Recall_std = 0.0
+test_Precision = 0.5786775051014873
+test_Precision_std = 0.0
+test_F1_Score = 0.5986345123492478
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5837449213387775
+test_ROC_AUC_std = 0.0
+
+Classifier: MDM
+test_Accuracy = 0.5511160808759173
+test_Accuracy_std = 0.0
+test_Recall = 0.6952637143258731
+test_Recall_std = 0.0
+test_Precision = 0.5411831328841038
+test_Precision_std = 0.0
+test_F1_Score = 0.605529234809807
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5510024806613391
+test_ROC_AUC_std = 0.0
+
+Classifier: TS-LR
+test_Accuracy = 0.5889170115639202
+test_Accuracy_std = 0.0
+test_Recall = 0.6182241637118897
+test_Recall_std = 0.0
+test_Precision = 0.5851530283956409
+test_Precision_std = 0.0
+test_F1_Score = 0.5996500748938463
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5887661854670967
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LDA
+test_Accuracy = 0.5829101880915883
+test_Accuracy_std = 0.0
+test_Recall = 0.6223348987594549
+test_Recall_std = 0.0
+test_Precision = 0.5778574041241973
+test_Precision_std = 0.0
+test_F1_Score = 0.5975441592407112
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5828185971963261
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LR
+test_Accuracy = 0.5885671224250683
+test_Accuracy_std = 0.0
+test_Recall = 0.6131174880578366
+test_Recall_std = 0.0
+test_Precision = 0.5847177699300105
+test_Precision_std = 0.0
+test_F1_Score = 0.5971590656526572
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5884495592386649
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 80: 
+Classifier: CSP-KNN
+test_Accuracy = 0.5421886325151529
+test_Accuracy_std = 0.0
+test_Recall = 0.3739148423014778
+test_Recall_std = 0.0
+test_Precision = 0.5619579122766559
+test_Precision_std = 0.0
+test_F1_Score = 0.4475504545578516
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5419156901348767
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-SVM
+test_Accuracy = 0.5940943439522701
+test_Accuracy_std = 0.0
+test_Recall = 0.6206232214909952
+test_Recall_std = 0.0
+test_Precision = 0.5890136099621668
+test_Precision_std = 0.0
+test_F1_Score = 0.6017419516880218
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5943892789014823
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-LDA
+test_Accuracy = 0.596043456930795
+test_Accuracy_std = 0.0
+test_Recall = 0.6217233310138439
+test_Recall_std = 0.0
+test_Precision = 0.5910556402688695
+test_Precision_std = 0.0
+test_F1_Score = 0.6034571567276671
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.596346888765764
+test_ROC_AUC_std = 0.0
+
+Classifier: MDM
+test_Accuracy = 0.5656883713937553
+test_Accuracy_std = 0.0
+test_Recall = 0.6651300327101535
+test_Recall_std = 0.0
+test_Precision = 0.555095366139186
+test_Precision_std = 0.0
+test_F1_Score = 0.6029151962334721
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5662132349817366
+test_ROC_AUC_std = 0.0
+
+Classifier: TS-LR
+test_Accuracy = 0.5871686923356914
+test_Accuracy_std = 0.0
+test_Recall = 0.6128451723699218
+test_Recall_std = 0.0
+test_Precision = 0.581658681357722
+test_Precision_std = 0.0
+test_F1_Score = 0.5942890957824252
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.587480875914489
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LDA
+test_Accuracy = 0.597717126398582
+test_Accuracy_std = 0.0
+test_Recall = 0.6189266337649958
+test_Recall_std = 0.0
+test_Precision = 0.5931989304825755
+test_Precision_std = 0.0
+test_F1_Score = 0.603366604859397
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5980090921431082
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LR
+test_Accuracy = 0.59883765370555
+test_Accuracy_std = 0.0
+test_Recall = 0.6228313982652385
+test_Recall_std = 0.0
+test_Precision = 0.5937136643686424
+test_Precision_std = 0.0
+test_F1_Score = 0.6055694819757921
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5991280288006161
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 90: 
+Classifier: CSP-KNN
+test_Accuracy = 0.5463228132278637
+test_Accuracy_std = 0.0
+test_Recall = 0.38001916224807564
+test_Recall_std = 0.0
+test_Precision = 0.5736514230317156
+test_Precision_std = 0.0
+test_F1_Score = 0.45367783992003013
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5465143505280712
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-SVM
+test_Accuracy = 0.5727121063462943
+test_Accuracy_std = 0.0
+test_Recall = 0.6273787616017845
+test_Recall_std = 0.0
+test_Precision = 0.5688784223573302
+test_Precision_std = 0.0
+test_F1_Score = 0.5930461309600036
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5723468608600497
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-LDA
+test_Accuracy = 0.5737034594113026
+test_Accuracy_std = 0.0
+test_Recall = 0.6006125728378516
+test_Recall_std = 0.0
+test_Precision = 0.57298012930541
+test_Precision_std = 0.0
+test_F1_Score = 0.5822912594482357
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5734178453008774
+test_ROC_AUC_std = 0.0
+
+Classifier: MDM
+test_Accuracy = 0.565406974407088
+test_Accuracy_std = 0.0
+test_Recall = 0.6639452817330997
+test_Recall_std = 0.0
+test_Precision = 0.5575475497092379
+test_Precision_std = 0.0
+test_F1_Score = 0.5979282061930251
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5645776389173287
+test_ROC_AUC_std = 0.0
+
+Classifier: TS-LR
+test_Accuracy = 0.5873372065852526
+test_Accuracy_std = 0.0
+test_Recall = 0.600706824702313
+test_Recall_std = 0.0
+test_Precision = 0.5905011849608399
+test_Precision_std = 0.0
+test_F1_Score = 0.587651318076233
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5869215531034939
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LDA
+test_Accuracy = 0.5739411117727434
+test_Accuracy_std = 0.0
+test_Recall = 0.6045159632795303
+test_Recall_std = 0.0
+test_Precision = 0.5730465038590482
+test_Precision_std = 0.0
+test_F1_Score = 0.5835883425940807
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5736325770990078
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LR
+test_Accuracy = 0.5796276120482445
+test_Accuracy_std = 0.0
+test_Recall = 0.6071414175971139
+test_Recall_std = 0.0
+test_Precision = 0.5768943891368775
+test_Precision_std = 0.0
+test_F1_Score = 0.5859289049679888
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.579450263942954
+test_ROC_AUC_std = 0.0
+
+
+--Batch Size: 100: 
+Classifier: CSP-KNN
+test_Accuracy = 0.5418542838337606
+test_Accuracy_std = 0.0
+test_Recall = 0.3694359085556666
+test_Recall_std = 0.0
+test_Precision = 0.563673094810616
+test_Precision_std = 0.0
+test_F1_Score = 0.44535610181861446
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5416293662444293
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-SVM
+test_Accuracy = 0.5744745255321074
+test_Accuracy_std = 0.0
+test_Recall = 0.6479090264369977
+test_Recall_std = 0.0
+test_Precision = 0.5653978408285211
+test_Precision_std = 0.0
+test_F1_Score = 0.6033480443288879
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5745534106203145
+test_ROC_AUC_std = 0.0
+
+Classifier: CSP-LDA
+test_Accuracy = 0.5829811132662023
+test_Accuracy_std = 0.0
+test_Recall = 0.6160473269983839
+test_Recall_std = 0.0
+test_Precision = 0.5775924613391132
+test_Precision_std = 0.0
+test_F1_Score = 0.5957360373495076
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.582948102091681
+test_ROC_AUC_std = 0.0
+
+Classifier: MDM
+test_Accuracy = 0.5654014639725174
+test_Accuracy_std = 0.0
+test_Recall = 0.6664998913318979
+test_Recall_std = 0.0
+test_Precision = 0.5531485109771437
+test_Precision_std = 0.0
+test_F1_Score = 0.6039145897015893
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5651542474916151
+test_ROC_AUC_std = 0.0
+
+Classifier: TS-LR
+test_Accuracy = 0.5910793982510743
+test_Accuracy_std = 0.0
+test_Recall = 0.6015386236118899
+test_Recall_std = 0.0
+test_Precision = 0.589048111996617
+test_Precision_std = 0.0
+test_F1_Score = 0.5948842178769201
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5909111434632492
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LDA
+test_Accuracy = 0.5852213232241439
+test_Accuracy_std = 0.0
+test_Recall = 0.625014382277094
+test_Recall_std = 0.0
+test_Precision = 0.5785521477892498
+test_Precision_std = 0.0
+test_F1_Score = 0.6003988984432229
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5852057400199633
+test_ROC_AUC_std = 0.0
+
+Classifier: CovCSP-LR
+test_Accuracy = 0.5839345771522602
+test_Accuracy_std = 0.0
+test_Recall = 0.6168334417548154
+test_Recall_std = 0.0
+test_Precision = 0.5776205429955459
+test_Precision_std = 0.0
+test_F1_Score = 0.5963141717241901
+test_F1_Score_std = 0.0
+test_ROC_AUC = 0.5838393230474704
+test_ROC_AUC_std = 0.0
+
+

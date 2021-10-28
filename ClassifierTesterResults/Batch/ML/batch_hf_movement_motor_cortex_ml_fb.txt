@@ -1,5 +1,5 @@
 Results for ClassifierTester Class on dataset 'physionet'
-Date/Time: 14-10-2021_09-14-56
+Date/Time: 24-10-2021_05-47-16
 Settings:
     Type = movement - hf
     Subject Range = [1, 110]
@@ -8,7 +8,7 @@ Settings:
     Notch Filter = None
     tmin = -1, tmax = 4
     Channels = ['C3', 'Cz', 'C4']
-    Random State = 579080
+    Random State = 865589
 
 Warning: parameter 'max_batch_size' has been decreased to the total subject count 102
 --INCREMENTAL BATCH TEST--
@@ -18,145 +18,145 @@ Parameters:
     max_batch_size = 102
     sk_test = True, sk_select = None
     nn_test = False, nn_select = None
-    train_test_split = <function train_test_split at 0x000001C28E08B3A8>, split_subjects = True
+    train_test_split = <function train_test_split at 0x0000025578E1A678>, split_subjects = True
     cross_val_times = 5
 --Batch Size: 10: 
 Classifier: FBCSP-SVM
-test_Accuracy = 0.6144170771756978
-test_Accuracy_std = 0.0
-test_Recall = 0.597189284145806
-test_Recall_std = 0.0
-test_Precision = 0.5988014527845036
-test_Precision_std = 0.0
-test_F1_Score = 0.5562624066581175
-test_F1_Score_std = 0.0
-test_ROC_AUC = 0.6158418651340795
-test_ROC_AUC_std = 0.0
+test_Accuracy = 0.5488888888888889
+test_Accuracy_std = 0.020608041101101576
+test_Recall = 0.618701912744466
+test_Recall_std = 0.1739471972959911
+test_Precision = 0.549088319088319
+test_Precision_std = 0.02063223983729264
+test_F1_Score = 0.5702286179638762
+test_F1_Score_std = 0.0956243542001504
+test_ROC_AUC = 0.5442638875035666
+test_ROC_AUC_std = 0.020040130876171475
 
 
 --Batch Size: 20: 
 Classifier: FBCSP-SVM
-test_Accuracy = 0.5876647834274953
-test_Accuracy_std = 0.0
-test_Recall = 0.6047797707910068
-test_Recall_std = 0.0
-test_Precision = 0.6184067559313301
-test_Precision_std = 0.0
-test_F1_Score = 0.5813048475764562
-test_F1_Score_std = 0.0
-test_ROC_AUC = 0.5896606300676068
-test_ROC_AUC_std = 0.0
+test_Accuracy = 0.5984934086629002
+test_Accuracy_std = 0.04850644331428972
+test_Recall = 0.5543857562513964
+test_Recall_std = 0.07876929101493288
+test_Precision = 0.6163340168603326
+test_Precision_std = 0.08279090075182165
+test_F1_Score = 0.5783013568129446
+test_F1_Score_std = 0.05217669872900443
+test_ROC_AUC = 0.5974685606204819
+test_ROC_AUC_std = 0.04811489610874278
 
 
 --Batch Size: 30: 
 Classifier: FBCSP-SVM
-test_Accuracy = 0.5880149812734081
-test_Accuracy_std = 0.0
-test_Recall = 0.6139298457208905
-test_Recall_std = 0.0
-test_Precision = 0.6072513261470569
-test_Precision_std = 0.0
-test_F1_Score = 0.5942407550086417
-test_F1_Score_std = 0.0
-test_ROC_AUC = 0.5871966891448432
-test_ROC_AUC_std = 0.0
+test_Accuracy = 0.5950435062232815
+test_Accuracy_std = 0.03847444331386294
+test_Recall = 0.6421269482810106
+test_Recall_std = 0.1366755095433724
+test_Precision = 0.5926060961274218
+test_Precision_std = 0.029282031268805412
+test_F1_Score = 0.6063611131431165
+test_F1_Score_std = 0.0749045867889984
+test_ROC_AUC = 0.5954465838751757
+test_ROC_AUC_std = 0.03899130094112532
 
 
 --Batch Size: 40: 
 Classifier: FBCSP-SVM
-test_Accuracy = 0.5918814192343604
-test_Accuracy_std = 0.0
-test_Recall = 0.5668871467226355
-test_Recall_std = 0.0
-test_Precision = 0.5996047774565878
-test_Precision_std = 0.0
-test_F1_Score = 0.579232864289493
-test_F1_Score_std = 0.0
-test_ROC_AUC = 0.5919977622409449
-test_ROC_AUC_std = 0.0
+test_Accuracy = 0.5839526163856184
+test_Accuracy_std = 0.017517578418747768
+test_Recall = 0.6186641377426639
+test_Recall_std = 0.1278271842647351
+test_Precision = 0.5893372239089668
+test_Precision_std = 0.03589201377298246
+test_F1_Score = 0.594221694542105
+test_F1_Score_std = 0.04365657717298146
+test_ROC_AUC = 0.5847744713587557
+test_ROC_AUC_std = 0.018084331778394733
 
 
 --Batch Size: 50: 
 Classifier: FBCSP-SVM
-test_Accuracy = 0.5875598282846605
-test_Accuracy_std = 0.0
-test_Recall = 0.6291358553643136
-test_Recall_std = 0.0
-test_Precision = 0.5851142470349135
-test_Precision_std = 0.0
-test_F1_Score = 0.6000759386776524
-test_F1_Score_std = 0.0
-test_ROC_AUC = 0.5871373197809607
-test_ROC_AUC_std = 0.0
+test_Accuracy = 0.5805952819310904
+test_Accuracy_std = 0.028466708434733732
+test_Recall = 0.6537234282781139
+test_Recall_std = 0.1070805236381106
+test_Precision = 0.5738723375946152
+test_Precision_std = 0.021748778644310095
+test_F1_Score = 0.6075478329712676
+test_F1_Score_std = 0.04827964434673142
+test_ROC_AUC = 0.5796964669860916
+test_ROC_AUC_std = 0.027825206569872814
 
 
 --Batch Size: 60: 
 Classifier: FBCSP-SVM
-test_Accuracy = 0.5893837839054623
-test_Accuracy_std = 0.0
-test_Recall = 0.5734355044699873
-test_Recall_std = 0.0
-test_Precision = 0.596347272263829
-test_Precision_std = 0.0
-test_F1_Score = 0.5821780913322223
-test_F1_Score_std = 0.0
-test_ROC_AUC = 0.5892838959894897
-test_ROC_AUC_std = 0.0
+test_Accuracy = 0.5889953290373853
+test_Accuracy_std = 0.031196676776277577
+test_Recall = 0.5948689882333005
+test_Recall_std = 0.11147349280394969
+test_Precision = 0.5849315812816753
+test_Precision_std = 0.019811901950270716
+test_F1_Score = 0.5853561280649466
+test_F1_Score_std = 0.06161863199866112
+test_ROC_AUC = 0.5894316417687795
+test_ROC_AUC_std = 0.03190227381237399
 
 
 --Batch Size: 70: 
 Classifier: FBCSP-SVM
-test_Accuracy = 0.594842000105158
-test_Accuracy_std = 0.0
-test_Recall = 0.6357531123602248
-test_Recall_std = 0.0
-test_Precision = 0.5907991280162392
-test_Precision_std = 0.0
-test_F1_Score = 0.6085960608501446
-test_F1_Score_std = 0.0
-test_ROC_AUC = 0.5945759885633886
-test_ROC_AUC_std = 0.0
+test_Accuracy = 0.5716663891663891
+test_Accuracy_std = 0.030396540710577583
+test_Recall = 0.4969334044896291
+test_Recall_std = 0.12634242737053183
+test_Precision = 0.5882223891592621
+test_Precision_std = 0.023343764358576304
+test_F1_Score = 0.5303220910762743
+test_F1_Score_std = 0.07739062649898326
+test_ROC_AUC = 0.5726583271177753
+test_ROC_AUC_std = 0.029579724791392537
 
 
 --Batch Size: 80: 
 Classifier: FBCSP-SVM
-test_Accuracy = 0.6113087622556623
-test_Accuracy_std = 0.0
-test_Recall = 0.6611049639633622
-test_Recall_std = 0.0
-test_Precision = 0.6056949988763811
-test_Precision_std = 0.0
-test_F1_Score = 0.6297881729646326
-test_F1_Score_std = 0.0
-test_ROC_AUC = 0.6109360327610738
-test_ROC_AUC_std = 0.0
+test_Accuracy = 0.5868234019623787
+test_Accuracy_std = 0.02555813991608453
+test_Recall = 0.5630545347347525
+test_Recall_std = 0.07806337641878573
+test_Precision = 0.5961002855210001
+test_Precision_std = 0.031512814436786496
+test_F1_Score = 0.5755345495262413
+test_F1_Score_std = 0.042552515227989404
+test_ROC_AUC = 0.5870222108528311
+test_ROC_AUC_std = 0.025555990696452882
 
 
 --Batch Size: 90: 
 Classifier: FBCSP-SVM
-test_Accuracy = 0.585640604621854
-test_Accuracy_std = 0.0
-test_Recall = 0.601129955835652
-test_Recall_std = 0.0
-test_Precision = 0.5867736698106277
-test_Precision_std = 0.0
-test_F1_Score = 0.588774996038392
-test_F1_Score_std = 0.0
-test_ROC_AUC = 0.585182084929279
-test_ROC_AUC_std = 0.0
+test_Accuracy = 0.5752436924375625
+test_Accuracy_std = 0.01272692958071154
+test_Recall = 0.5961681674127022
+test_Recall_std = 0.07911772297800704
+test_Precision = 0.5761362961203927
+test_Precision_std = 0.019567328555238416
+test_F1_Score = 0.5825884428657865
+test_F1_Score_std = 0.03192635604635583
+test_ROC_AUC = 0.5760600415625575
+test_ROC_AUC_std = 0.0129790871529587
 
 
 --Batch Size: 100: 
 Classifier: FBCSP-SVM
-test_Accuracy = 0.6036808031785628
-test_Accuracy_std = 0.0
-test_Recall = 0.5929486263623527
-test_Recall_std = 0.0
-test_Precision = 0.6097761945083164
-test_Precision_std = 0.0
-test_F1_Score = 0.5967094104646607
-test_F1_Score_std = 0.0
-test_ROC_AUC = 0.6033161610854618
-test_ROC_AUC_std = 0.0
+test_Accuracy = 0.5949031705511624
+test_Accuracy_std = 0.0153650331394749
+test_Recall = 0.6282240011748039
+test_Recall_std = 0.09007263438540045
+test_Precision = 0.5973491345256051
+test_Precision_std = 0.035867556718406836
+test_F1_Score = 0.606521883216511
+test_F1_Score_std = 0.0264866921846547
+test_ROC_AUC = 0.5950174023978103
+test_ROC_AUC_std = 0.015859045311749444
 
 
