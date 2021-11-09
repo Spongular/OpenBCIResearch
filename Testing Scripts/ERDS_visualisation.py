@@ -7,45 +7,66 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import mne
+import data_loading
 from mne.time_frequency import tfr_multitaper
 from mne.stats import permutation_cluster_1samp_test as pcluster_test
 from mne.viz.utils import center_cmap
 
-#options
+dataset = 'recorded'
 live_layout = 'm_cortex'
 sub = 2
-stim_select = 'hf'
+stim_select = 'lr'
 
-#Grab the file names and filter to match what is needed.
-rootpath = 'E:\\PycharmProjects\\OpenBCIResearch\\DataGathering\\LiveRecordings\\MotorResponses\\Movement\\'
-file_paths = listdir(rootpath)
-if live_layout == 'headband':
-    files = fnmatch.filter(file_paths, 'subject{sub}-??_??_????-mm-{stim}*'.format(sub=sub,
-                                                                                     stim=stim_select))
-elif live_layout == 'm_cortex':
-    files = fnmatch.filter(file_paths, 'subject{sub}-??_??_????-m_cortex_electrode_placement-mm-{stim}*'.format(sub=sub,
-                                                                                     stim=stim_select))
-else:
-    raise Exception("Error: 'live_layout' must be either 'headband' or 'm_cortex'")
+if dataset == 'recorded':
 
-#Format the file paths and load them through LiveBCI
-file_paths = []
-for file_name in files:
-    file_paths.append(rootpath + file_name)
-dloader = LiveBCI.MotorImageryStimulator(stim_time=4, wait_time=4, stim_count=5, stim_type='lr',
-                                         board=None)
-dloader.load_multiple_data(files=file_paths)
-raw = dloader.raw
-print(raw.info)
-picks = mne.pick_channels(raw.info["ch_names"], ["C3", "Cz", "C4"])
-events = mne.find_events(raw=raw, stim_channel='STI001')
+    #Grab the file names and filter to match what is needed.
+    rootpath = 'E:\\PycharmProjects\\OpenBCIResearch\\DataGathering\\LiveRecordings\\MotorResponses\\Movement\\'
+    file_paths = listdir(rootpath)
+    if live_layout == 'headband':
+        files = fnmatch.filter(file_paths, 'subject{sub}-??_??_????-mm-{stim}*'.format(sub=sub,
+                                                                                         stim=stim_select))
+    elif live_layout == 'm_cortex':
+        files = fnmatch.filter(file_paths, 'subject{sub}-??_??_????-m_cortex_electrode_placement-mm-{stim}*'.format(sub=sub,
+                                                                                         stim=stim_select))
+    else:
+        raise Exception("Error: 'live_layout' must be either 'headband' or 'm_cortex'")
+
+    #Format the file paths and load them through LiveBCI
+    file_paths = []
+    for file_name in files:
+        file_paths.append(rootpath + file_name)
+    dloader = LiveBCI.MotorImageryStimulator(stim_time=4, wait_time=4, stim_count=5, stim_type='lr',
+                                             board=None)
+    dloader.load_multiple_data(files=file_paths)
+    raw = dloader.raw
+    print(raw.info)
+    picks = mne.pick_channels(raw.info["ch_names"], ["C3", "Cz", "C4"])
+    events = mne.find_events(raw=raw, stim_channel='STI001')
+elif dataset == 'physionet':
+    # 1 = left/right hands real.
+    # 2 = left/right hands imagery.
+    # 3 = hands/feet real.
+    # 4 = hands/feet imagery.
+    if stim_select == 'hf':
+        stim = 3
+    else:
+        stim = 1
+    raw = data_loading.get_single_mi(sub, stim)
+    mne.datasets.eegbci.standardize(raw)
+    raw.set_montage("standard_1020", match_case=False)
+    raw.rename_channels(lambda s: s.strip("."))
+    events, event_ids = mne.events_from_annotations(raw, event_id=dict(T1=2, T2=3))
 
 # epoch data ##################################################################
-tmin, tmax = -1, 4  # define epochs around events (in s)
-event_ids = dict(still=1, hands=2, feet=3)  # map event IDs to tasks
+picks = mne.pick_channels(raw.info["ch_names"], ["C3", "Cz", "C4"])
+tmin, tmax = -4, 4  # define epochs around events (in s)
+if stim_select == 'hf':
+    event_ids = dict(hands=2, feet=3)  # map event IDs to tasks
+elif stim_select == 'lr':
+    event_ids = dict(left=2, right=3)  # map event IDs to tasks
 
 epochs = mne.Epochs(raw, events, event_ids, tmin - 0.5, tmax + 0.5,
-                    picks=picks, baseline=None, preload=True)
+                    picks=picks, preload=True) #baseline=None,
 
 # compute ERDS maps ###########################################################
 freqs = np.arange(2, 36, 1)  # frequencies from 2-35Hz
@@ -122,7 +143,7 @@ g.map(sns.lineplot, 'time', 'value', 'condition', n_boot=10)
 axline_kw = dict(color='black', linestyle='dashed', linewidth=0.5, alpha=0.5)
 g.map(plt.axhline, y=0, **axline_kw)
 g.map(plt.axvline, x=0, **axline_kw)
-g.set(ylim=(None, 1.5))
+g.set(ylim=(-0.25, 3))
 g.set_axis_labels("Time (s)", "ERDS (%)")
 g.set_titles(col_template="{col_name}", row_template="{row_name}")
 g.add_legend(ncol=2, loc='lower center')

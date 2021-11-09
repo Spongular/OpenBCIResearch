@@ -11,27 +11,27 @@ import openpyxl
 stim_combos = [('hf', 'movement'), ('lr', 'movement')]
 columns = None
 
-classifier_type = 'nn'
+classifier_type = 'ml'
 if classifier_type == 'nn':
     fpath='NN'
     columns = ['layout', 'batch_no',
-               'eegnet_accuracy', 'eegnet_accuracy_stddev', 'eegnet_recall', 'eegnet_precision', 'eegnet_f1',
-               'eegnet_roc-auc', 'fusion_eegnet_accuracy', 'fusion_eegnet_accuracy_stddev', 'fusion_eegnet_recall',
+               'eegnet_accuracy', 'eegnet_recall', 'eegnet_precision', 'eegnet_f1',
+               'eegnet_roc-auc', 'fusion_eegnet_accuracy', 'fusion_eegnet_recall',
                'fusion_eegnet_precision', 'fusion_eegnet_f1', 'fusion_eegnet_roc-auc',
-               'deep_convnet_accuracy', 'deep_convnet_accuracy_stddev', 'deep_convnet_recall', 'deep_convnet_precision',
-               'deep_convnet_f1', 'deep_convnet_roc-auc', 'shallow_convnet_accuracy', 'shallow_convnet_accuracy_stddev',
+               'deep_convnet_accuracy', 'deep_convnet_recall', 'deep_convnet_precision',
+               'deep_convnet_f1', 'deep_convnet_roc-auc', 'shallow_convnet_accuracy',
                'shallow_convnet_recall', 'shallow_convnet_precision', 'shallow_convnet_f1', 'shallow_convnet_roc-auc']
 else:
     fpath='ML'
     columns = ['layout', 'batch_size',
-               'cspknn_accuracy', 'cspknn_accuracy_stddev', 'cspknn_recall', 'cspknn_precision', 'cspknn_f1', 'cspknn_roc-auc',
-               'cspsvm_accuracy', 'cspsvm_accuracy_stddev', 'cspsvm_recall', 'cspsvm_precision', 'cspsvm_f1', 'cspsvm_roc-auc',
-               'csplda_accuracy', 'csplda_accuracy_stddev', 'csplda_recall', 'csplda_precision', 'csplda_f1', 'csplda_roc-auc',
-               'mdm_accuracy', 'mdm_accuracy_stddev', 'mdm_recall', 'mdm_precision', 'mdm_f1', 'mdm_roc-auc',
-               'tslr_accuracy', 'tslr_accuracy_stddev', 'tslr_recall', 'tslr_precision', 'tslr_f1', 'tslr_roc-auc',
-               'covcsplda_accuracy','covcsplda_accuracy_stddev', 'covcsplda_recall', 'covcsplda_precision', 'covcsplda_f1', 'covcsplda_roc-auc',
-               'covcsplr_accuracy', 'covcsplr_accuracy_stddev', 'covcsplr_recall', 'covcsplr_precision', 'covcsplr_f1', 'covcsplr_roc-auc',
-               'fbcspsvm_accuracy', 'fbcspsvm_accuracy_stddev', 'fbcspsvm_recall', 'fbcspsvm_precision', 'fbcspsvm_f1', 'fbcspsvm_roc-auc', ]
+               'cspknn_accuracy', 'cspknn_recall', 'cspknn_precision', 'cspknn_f1', 'cspknn_roc-auc',
+               'cspsvm_accuracy', 'cspsvm_recall', 'cspsvm_precision', 'cspsvm_f1', 'cspsvm_roc-auc',
+               'csplda_accuracy', 'csplda_recall', 'csplda_precision', 'csplda_f1', 'csplda_roc-auc',
+               'mdm_accuracy', 'mdm_recall', 'mdm_precision', 'mdm_f1', 'mdm_roc-auc',
+               'tslr_accuracy', 'tslr_recall', 'tslr_precision', 'tslr_f1', 'tslr_roc-auc',
+               'covcsplda_accuracy','covcsplda_recall', 'covcsplda_precision', 'covcsplda_f1', 'covcsplda_roc-auc',
+               'covcsplr_accuracy','covcsplr_recall', 'covcsplr_precision', 'covcsplr_f1', 'covcsplr_roc-auc',
+               'fbcspsvm_accuracy','fbcspsvm_recall', 'fbcspsvm_precision', 'fbcspsvm_f1', 'fbcspsvm_roc-auc', ]
 
 #This is the general format for the file names.
 #sub = subject number, stim = stimulus type, resp = response type, ch = channel layout
@@ -53,8 +53,7 @@ for stim in stim_combos:
     cur_row = []
     pat1 = re.compile(r"test_\w* = ")
     pat2 = re.compile(r"test_\w*_std = ")
-    pat3 = re.compile(r"test_\w*Accuracy_std = ")
-    bat1 = re.compile(r"--Batch No. ")
+    bat1 = re.compile(r"Value: ")
     bat2 = re.compile(r":\w*")
     for line in contents:
         #Keep track of batch size here.
@@ -68,10 +67,6 @@ for stim in stim_combos:
             cur_row.append(layout)
             cur_row.append(batch)
         #Keep track of the data rows here.
-        elif pat3.search(line) is not None:
-            data = line.strip('\n')
-            data = re.sub(pat3, '', data)
-            cur_row.append(data)
         elif pat1.search(line) is not None and pat2.search(line) is None and len(cur_row) > 0:
             data = line.strip('\n')
             data = re.sub(pat1, '', data)
@@ -89,8 +84,7 @@ for stim in stim_combos:
         cur_row = []
         pat1 = re.compile(r"test_\w* = ")
         pat2 = re.compile(r"test_\w*_std = ")
-        pat3 = re.compile(r"test_\w*Accuracy_std = ")
-        bat1 = re.compile(r"--Batch No. ")
+        bat1 = re.compile(r"Value: ")
         bat2 = re.compile(r":\w*")
         for line in contents:
             # Keep track of batch size here.
@@ -104,10 +98,6 @@ for stim in stim_combos:
                 cur_row.append(layout)
                 cur_row.append(batch)
             # Keep track of the data rows here.
-            elif pat3.search(line) is not None:
-                data = line.strip('\n')
-                data = re.sub(pat3, '', data)
-                cur_row.append(data)
             elif pat1.search(line) is not None and pat2.search(line) is None and len(cur_row) > 0:
                 data = line.strip('\n')
                 data = re.sub(pat1, '', data)
@@ -126,7 +116,7 @@ for stim in stim_combos:
         data_frame = data_frame.append(r, ignore_index=True)
 
     print(data_frame)
-    filename = "{stim}-Parsed_Results_{cls}_2.xlsx".format(stim=stim[0]+stim[1], cls=classifier_type)
+    filename = "{stim}-Parsed_Results_{cls}_nonavg_2.xlsx".format(stim=stim[0]+stim[1], cls=classifier_type)
     writer = pd.ExcelWriter(filename, engine='xlsxwriter')
     data_frame.to_excel(writer)
     writer.save()

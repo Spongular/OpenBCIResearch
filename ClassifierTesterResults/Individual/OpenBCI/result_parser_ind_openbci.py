@@ -23,7 +23,7 @@ columns = ['subject_no', 'layout',
 
 #This is the general format for the file names.
 #sub = subject number, stim = stimulus type, resp = response type, ch = channel layout
-file_name_blank = "sub{sub}_{stim}_{resp}"
+file_name_blank = "sub{sub}_{stim}_{resp}-test"
 
 for stim in stim_combos:
     #Create an empty dataframe with our columns

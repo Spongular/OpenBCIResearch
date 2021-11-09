@@ -12,7 +12,7 @@ rand = 162433
 for combo in combinations:
     print("\nIterating for Combination: {c1}-{c2}\n\n".format(c1=combo[0], c2=combo[1]))
     # Form our path/filename. Here, we're saving somewhere different to the default to make them easy to find.
-    fname = 'batch_{stim}_{type}_64ch_nn'.format(stim=combo[0], type=combo[1])
+    fname = 'batch_{stim}_{type}_64ch_nn-blah'.format(stim=combo[0], type=combo[1])
     fpath = 'E:/PycharmProjects/OpenBCIResearch/CLassifierTesterResults/Batch/NN'
 
     # Form our testing class and run it.

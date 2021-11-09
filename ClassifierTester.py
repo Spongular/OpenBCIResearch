@@ -196,7 +196,7 @@ class ClassifierTester:
         self.filter_bank = filter_bank
 
         #If no random state is selected, make one.
-        if self.random_state is None or type(self.random_state) != int:
+        if self.random_state is not None and type(self.random_state) != int:
             self.random_state = random.randint(1, 999999)
 
 
@@ -339,6 +339,7 @@ class ClassifierTester:
         self.p_n_jobs = p_n_jobs
         #self.p_skip_mdm = p_skip_mdm
 
+        self.p_select_frac = p_select_frac
         if self.p_select is not None:
             if self.p_select == 'gridsearch':
                 print("Performing Gridsearch on compatible pipelines to find optimal parameters...")
@@ -425,6 +426,11 @@ class ClassifierTester:
 
     def __process_live(self, raw_source):
         if self.filter_bank is False:
+            if self.notch is not None:
+                print("Performing Notch filter at {n}hz".format(n=self.notch))
+                raw_source.raw.notch_filter(self.notch, filter_length='auto', phase='zero')
+            raw_source.raw = gen_tools.preprocess_bandpass(raw_source.raw, min=self.filter_bounds[0],
+                                                           max=self.filter_bounds[1])
             raw_source.eeg_to_epochs(tmin=self.tbounds[0], tmax=self.tbounds[1], event_dict=dict(T1=2, T2=3), stim_ch='STI001')
             epochs = raw_source.epochs
             data = epochs.get_data()
@@ -653,6 +659,21 @@ class ClassifierTester:
             self.__print("\n")
         return
 
+    def __print_non_average_results(self, results):
+        #Here, we need to print each run of data.
+        m = list(results)[0]
+        n = list(results[m])[0]
+        length = len(results[m][n])
+
+        for x in range(0, length):
+            self.__print("Value: {n}\n".format(n=x + 1))
+            for name in results.keys():
+                self.__print("Classifier: {n}\n".format(n=name))
+                for metric in results[name].keys():
+                    self.__print("{m} = {r}\n".format(m=metric, r=results[name][metric][x]))
+                self.__print("\n")
+        return
+
     def __print_results(self, results):
         #Here we get the average for each metric and print it.
         for name in results.keys():
@@ -767,7 +788,7 @@ class ClassifierTester:
             }
         else:
             parameters = {
-                'SVC__C': [0.00001, 0.0001, 0.001, 0.01, 0.1, 0, 1, 10, 100, 1000, 10000, 100000],
+                'SVC__C': [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000],
                 'SVC__kernel': ('linear', 'poly', 'rbf', 'sigmoid'),
                 'CSP__n_components': range(2, max_csp_components + 1),
                 'CSP__cov_est': ('concat', 'epoch'),
@@ -829,7 +850,6 @@ class ClassifierTester:
     #   https://neurotechx.github.io/eeg-notebooks/auto_examples/visual_ssvep/02r__ssvep_decoding.html
 
     #'mcd' is not used in the estimator search as it is far too time-intensive.
-
     def __mdm(self, params=None):
         print("Generating MDM classifier pipeline...")
         # Assemble classifier
@@ -852,7 +872,7 @@ class ClassifierTester:
         else:
             parameters = {
                 'COV__estimator': ('cov', 'scm', 'lwf', 'oas', 'corr'),
-                'MDM__metric': ('riemann', 'logeuclid', 'euclid', 'logdet', 'wasserstein')
+                'MDM__metric': ('riemann', 'logeuclid', 'euclid', 'wasserstein')
             }
         return "MDM", clf, parameters
 
@@ -1215,7 +1235,7 @@ class ClassifierTester:
 
     #Trains and tests each classifier on randomised batches of subjects.
     def run_batch_test(self, batch_size, n_times, sk_test=True, nn_test=True, sk_select=None, nn_select=None,
-                       test_split=0.2, split_subject=False, cross_val_times=10):
+                       test_split=0.2, split_subject=False, cross_val_times=10, avg=True):
         #Check parameters.
         if n_times < 1:
             raise Exception("Error: Attribute 'n_times' must be greater than or equal to 1.")
@@ -1263,10 +1283,10 @@ class ClassifierTester:
         count = 1
         for result in results:
             self.__print("--Batch No. {n}: \n".format(n=count))
-            if self.avg:
+            if avg:
                 self.__print_average_results(result)
             else:
-                self.__print_results(result)
+                self.__print_non_average_results(result)
             self.__print("\n")
             count = count + 1
         return

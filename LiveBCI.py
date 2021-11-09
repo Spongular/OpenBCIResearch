@@ -1,24 +1,22 @@
 #This script contains all the methods needed for live BCI recording, visualisation and decoding.
 
 #System Imports
-import time
 from random import shuffle
 
 #Brainflow Imports
 from brainflow.board_shim import BoardShim, BrainFlowInputParams, BoardIds
 
 #Assorted Math/Numerical Imports
-import matplotlib
 import numpy as np
 
 #MNE EEG Decoding Imports
 import mne
-from mne import pick_types, Epochs, events_from_annotations
+from mne import pick_types, Epochs
 from mne import io
 
 #Machine Learning Imports
 from tensorflow.keras.utils import to_categorical
-from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.models import load_model
 from sklearn.utils import shuffle
 
 #PsychoPi EEG Stimulation Imports
