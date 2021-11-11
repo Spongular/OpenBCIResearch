@@ -1,18 +1,13 @@
-import mne
-from mne.io import read_raw_edf
 from tensorflow.python.keras.callbacks import ModelCheckpoint, LearningRateScheduler
 
-import standard_classifiers
-import data_loading
 import gen_tools
 import keras_classifiers
 from sklearn.utils import shuffle
 from sklearn.model_selection import train_test_split
 import numpy as np
 from keras.utils import to_categorical
-from keras import models, optimizers
-from mne.datasets.eegbci import eegbci
-from keras import backend
+from keras import optimizers
+
 
 def runPremadeEEGNet(raw, highpass=4., tmin=0., tmax=4., batch_size=16, epoch_count=300,
                      learn_rate=None, scheduler=None, checkpoint=None):

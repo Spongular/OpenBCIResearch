@@ -26,7 +26,7 @@ test = LiveBCI.MotorImageryStimulator(stim_time=4, wait_time=4, stim_count=5, st
 
 
 #This data uses the Fp1, Fp2, O1, O2 electrode placements.
-test.load_data(file='E:\\PycharmProjects\\OpenBCIResearch\\DataGathering\\LiveRecordings\\MotorResponses\\test_samples\\test_ganglion_01_raw.fif')
+test.load_data(file='/DataGathering/LiveRecordings/MotorResponses/test_samples/test_ganglion_01_raw.fif')
 
 
 test.eeg_to_epochs(tmin=0., tmax=4., event_dict=dict(T1=1, T2=2), stim_ch='STIM001').plot(block=True)

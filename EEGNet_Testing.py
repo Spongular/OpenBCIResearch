@@ -3,22 +3,17 @@
 #Available at: https://arxiv.org/abs/2004.00077
 
 import mne
-from mne.io import read_raw_edf
-from tensorflow.python.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, LearningRateScheduler, EarlyStopping
+from tensorflow.python.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau, LearningRateScheduler
 
-import standard_classifiers
 import os
 import data_loading
 import gen_tools
 import keras_classifiers
 from sklearn.utils import shuffle
-from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.model_selection import train_test_split
 import numpy as np
 from tensorflow.keras.utils import to_categorical
-from keras import models
-from mne.datasets.eegbci import eegbci
 from keras import backend
-from matplotlib import pyplot as plt
 import random
 from sklearn.metrics import accuracy_score
 
